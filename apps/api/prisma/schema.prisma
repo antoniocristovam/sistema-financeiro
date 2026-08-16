@@ -1,0 +1,1114 @@
+// =============================================================================
+// finapp - schema Prisma
+// =============================================================================
+//
+// Convencoes que valem para o arquivo inteiro:
+//
+// 1. DINHEIRO. Todo valor monetario e' `Int` em CENTAVOS, com sufixo `InCents`.
+//    Nunca Float, nunca Decimal. Teto do Int assinado = 2.147.483.647 centavos
+//    (~R$ 21,4 milhoes) por lancamento, o que cobre financas pessoais com folga.
+//
+// 2. ESCOPO. Toda entidade financeira carrega `workspaceId`, inclusive quando
+//    daria para chegar nele por join. E' redundancia deliberada: e' o que permite
+//    todo repositorio filtrar por workspace em UMA clausula, que e' a barreira
+//    contra IDOR. Cada uma dessas tabelas tem `@@unique([workspaceId, id])` para
+//    que o lookup obrigatorio `WHERE workspaceId = ? AND id = ?` seja indexado.
+//
+// 3. DATAS. `@db.Date` quando a semantica e' dia de calendario (data do
+//    lancamento, vencimento, mes de referencia) -- assim nao existe hora e a
+//    virada do mes nao depende de fuso. `DateTime` (UTC) quando e' instante
+//    (createdAt, notifiedAt, expiresAt). A conversao para o fuso do usuario
+//    acontece na apresentacao.
+//
+// 4. MES DE REFERENCIA. Sempre o primeiro dia do mes, como `@db.Date`.
+//
+// 5. ARQUIVAR > EXCLUIR. Conta, categoria e meta tem `archivedAt` em vez de
+//    delete fisico, porque ha historico pendurado nelas.
+// =============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// =============================================================================
+// ENUMS
+// =============================================================================
+
+enum WorkspaceType {
+  PERSONAL
+  SHARED
+}
+
+enum WorkspaceRole {
+  OWNER
+  ADMIN
+  MEMBER
+  VIEWER
+}
+
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  REVOKED
+  EXPIRED
+}
+
+enum Theme {
+  LIGHT
+  DARK
+  SYSTEM
+}
+
+enum Locale {
+  PT_BR
+  EN_US
+}
+
+enum UserTokenType {
+  EMAIL_VERIFICATION
+  PASSWORD_RESET
+}
+
+enum AccountType {
+  CHECKING
+  SAVINGS
+  CASH
+  CREDIT_CARD
+  INVESTMENT
+}
+
+enum CategoryType {
+  INCOME
+  EXPENSE
+}
+
+enum TransactionType {
+  INCOME
+  EXPENSE
+  TRANSFER
+}
+
+enum TransactionStatus {
+  PENDING
+  SETTLED
+}
+
+/// Qual das duas pernas de uma transferencia esta linha representa.
+/// Sem isso, `type = TRANSFER` com valor sempre positivo nao diz de onde saiu
+/// e para onde foi.
+enum TransferLeg {
+  SOURCE
+  DESTINATION
+}
+
+enum RecurrenceFrequency {
+  WEEKLY
+  MONTHLY
+  YEARLY
+}
+
+enum InvoiceStatus {
+  OPEN
+  CLOSED
+  PAID
+}
+
+enum ShareType {
+  EQUAL
+  PERCENT
+  FIXED
+}
+
+enum SplitStatus {
+  PENDING
+  SETTLED
+}
+
+enum ImportSource {
+  OFX
+  CSV
+}
+
+enum ImportBatchStatus {
+  STAGED
+  REVIEWING
+  COMMITTED
+  DISCARDED
+  REVERTED
+}
+
+enum MatchStatus {
+  NEW
+  DUPLICATE
+  SIMILAR
+}
+
+enum ImportDecision {
+  IMPORT
+  SKIP
+  MERGE
+}
+
+enum ExportFormat {
+  CSV
+  XLSX
+  PDF
+}
+
+enum ExportJobStatus {
+  QUEUED
+  PROCESSING
+  COMPLETED
+  FAILED
+  EXPIRED
+}
+
+enum ReportType {
+  TRANSACTIONS
+  CATEGORY_SUMMARY
+  CASH_FLOW
+  BUDGET_PERFORMANCE
+  ANNUAL_TAX
+}
+
+enum NotificationType {
+  BUDGET_THRESHOLD_REACHED
+  BUDGET_EXCEEDED
+  RECURRENCE_DUE_SOON
+  RECURRENCE_AMOUNT_DRIFT
+  INVOICE_CLOSING
+  INVOICE_DUE
+  GOAL_REACHED
+  GOAL_OFF_TRACK
+  SPLIT_ASSIGNED
+  SETTLEMENT_RECORDED
+  WORKSPACE_INVITATION
+  IMPORT_READY_FOR_REVIEW
+  EXPORT_READY
+}
+
+enum AuditAction {
+  MEMBER_INVITED
+  MEMBER_JOINED
+  MEMBER_REMOVED
+  MEMBER_LEFT
+  MEMBER_ROLE_CHANGED
+  OWNERSHIP_TRANSFERRED
+  INVITATION_REVOKED
+  WORKSPACE_DELETED
+  ACCOUNT_ARCHIVED
+  ACCOUNT_DELETED
+  CATEGORY_DELETED
+  TRANSACTION_DELETED
+  IMPORT_COMMITTED
+  IMPORT_REVERTED
+}
+
+/// Classificacao fiscal de um rendimento para o relatorio anual (IRPF).
+enum TaxIncomeNature {
+  TRIBUTAVEL
+  ISENTO
+  EXCLUSIVA
+}
+
+// =============================================================================
+// IDENTIDADE
+// =============================================================================
+
+model User {
+  id              String    @id @default(uuid()) @db.Uuid
+  name            String    @db.VarChar(120)
+  email           String    @unique @db.VarChar(255)
+  passwordHash    String
+  /// Formato de data/numero na UI. A moeda exibida vem do workspace.
+  locale          Locale    @default(PT_BR)
+  /// Moeda preferida (ISO 4217). Vira `baseCurrency` do workspace pessoal.
+  currency        String    @default("BRL") @db.Char(3)
+  theme           Theme     @default(SYSTEM)
+  emailVerifiedAt DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  financialProfile    FinancialProfile?
+  memberships         WorkspaceMember[]
+  refreshTokens       RefreshToken[]
+  tokens              UserToken[]
+  notifications       Notification[]
+  sentInvitations     Invitation[]       @relation("InvitationInvitedBy")
+  createdTransactions Transaction[]      @relation("TransactionCreatedBy")
+  uploadedAttachments Attachment[]       @relation("AttachmentUploadedBy")
+  goalContributions   GoalContribution[] @relation("GoalContributionCreatedBy")
+  expenseSplits       ExpenseSplit[]     @relation("ExpenseSplitParticipant")
+  settlementsPaid     Settlement[]       @relation("SettlementFrom")
+  settlementsReceived Settlement[]       @relation("SettlementTo")
+  importBatches       ImportBatch[]      @relation("ImportBatchCreatedBy")
+  exportJobs          ExportJob[]        @relation("ExportJobRequestedBy")
+  auditLogs           AuditLog[]         @relation("AuditLogActor")
+
+  @@index([email])
+  @@map("users")
+}
+
+/// Refresh token rotativo. Guardamos apenas o hash.
+///
+/// `familyId` agrupa a cadeia de rotacoes de um login. Se um token ja usado
+/// reaparecer, a familia inteira e' revogada (deteccao de replay).
+model RefreshToken {
+  id                String    @id @default(uuid()) @db.Uuid
+  userId            String    @db.Uuid
+  tokenHash         String    @unique
+  familyId          String    @db.Uuid
+  expiresAt         DateTime
+  revokedAt         DateTime?
+  replacedByTokenId String?   @db.Uuid
+  userAgent         String?   @db.VarChar(255)
+  ipAddress         String?   @db.VarChar(64)
+  createdAt         DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([familyId])
+  @@index([expiresAt])
+  @@map("refresh_tokens")
+}
+
+/// Token de uso unico: verificacao de e-mail e recuperacao de senha.
+model UserToken {
+  id        String        @id @default(uuid()) @db.Uuid
+  userId    String        @db.Uuid
+  type      UserTokenType
+  tokenHash String        @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime      @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, type])
+  @@index([expiresAt])
+  @@map("user_tokens")
+}
+
+// =============================================================================
+// WORKSPACE
+// =============================================================================
+
+/// Unidade de posse dos dados. Contas, transacoes, categorias, orcamentos e
+/// metas pertencem a um workspace -- nunca a um usuario.
+model Workspace {
+  id           String        @id @default(uuid()) @db.Uuid
+  name         String        @db.VarChar(120)
+  type         WorkspaceType
+  baseCurrency String        @default("BRL") @db.Char(3)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  members           WorkspaceMember[]
+  invitations       Invitation[]
+  accounts          Account[]
+  categories        Category[]
+  transactions      Transaction[]
+  recurrences       Recurrence[]
+  installmentGroups InstallmentGroup[]
+  attachments       Attachment[]
+  budgets           Budget[]
+  goals             Goal[]
+  expenseSplits     ExpenseSplit[]
+  settlements       Settlement[]
+  importBatches     ImportBatch[]
+  importMappings    ImportMapping[]
+  categoryRules     CategoryRule[]
+  exportJobs        ExportJob[]
+  auditLogs         AuditLog[]
+  notifications     Notification[]
+  taxAssets         TaxAsset[]
+
+  @@map("workspaces")
+}
+
+model WorkspaceMember {
+  id          String        @id @default(uuid()) @db.Uuid
+  workspaceId String        @db.Uuid
+  userId      String        @db.Uuid
+  role        WorkspaceRole
+  joinedAt    DateTime      @default(now())
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, userId])
+  @@index([userId])
+  @@map("workspace_members")
+}
+
+/// Convite para entrar em um workspace. So o hash do token e' persistido.
+model Invitation {
+  id              String           @id @default(uuid()) @db.Uuid
+  workspaceId     String           @db.Uuid
+  email           String           @db.VarChar(255)
+  role            WorkspaceRole
+  tokenHash       String           @unique
+  expiresAt       DateTime
+  status          InvitationStatus @default(PENDING)
+  invitedByUserId String           @db.Uuid
+  acceptedAt      DateTime?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  invitedBy User      @relation("InvitationInvitedBy", fields: [invitedByUserId], references: [id], onDelete: Restrict)
+
+  @@index([workspaceId, status])
+  @@index([email, status])
+  @@map("invitations")
+}
+
+// =============================================================================
+// PERFIL FINANCEIRO
+// =============================================================================
+
+/// Dados coletados no onboarding. Pertence ao USUARIO (nao ao workspace):
+/// e' o perfil de quem usa, nao o estado de uma carteira.
+model FinancialProfile {
+  id                    String    @id @default(uuid()) @db.Uuid
+  userId                String    @unique @db.Uuid
+  monthlyIncomeInCents  Int       @default(0)
+  /// Dia do mes em que o salario cai (1-31).
+  payday                Int?
+  /// Percentual alvo de economia mensal, em pontos-base (10% = 1000).
+  savingsTargetPercent  Int?
+  /// Enquanto for nulo, toda navegacao redireciona para o wizard.
+  onboardingCompletedAt DateTime?
+  /// Ultimo passo concluido (1-5). E' o que torna o wizard retomavel.
+  onboardingStep        Int       @default(0)
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("financial_profiles")
+}
+
+// =============================================================================
+// CONTAS
+// =============================================================================
+
+model Account {
+  id                    String      @id @default(uuid()) @db.Uuid
+  workspaceId           String      @db.Uuid
+  name                  String      @db.VarChar(120)
+  type                  AccountType
+  initialBalanceInCents Int         @default(0)
+  institution           String?     @db.VarChar(120)
+  color                 String?     @db.VarChar(32)
+  icon                  String?     @db.VarChar(64)
+  archivedAt            DateTime?
+  createdAt             DateTime    @default(now())
+  updatedAt             DateTime    @updatedAt
+
+  workspace      Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  creditCard     CreditCard?
+  transactions   Transaction[]
+  goals          Goal[]          @relation("GoalLinkedAccount")
+  importBatches  ImportBatch[]
+  importMappings ImportMapping[]
+  taxAssets      TaxAsset[]
+
+  @@unique([workspaceId, id])
+  @@index([workspaceId, archivedAt])
+  @@map("accounts")
+}
+
+/// Extensao 1:1 de uma Account do tipo CREDIT_CARD.
+///
+/// Regra 5: compra no cartao NAO debita a conta na data da compra. Ela entra na
+/// fatura conforme `closingDay`; o saldo so muda quando a fatura e' paga.
+model CreditCard {
+  accountId    String   @id @db.Uuid
+  limitInCents Int
+  /// Dia do fechamento da fatura (1-31).
+  closingDay   Int
+  /// Dia do vencimento da fatura (1-31).
+  dueDay       Int
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  account  Account   @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  invoices Invoice[]
+
+  @@map("credit_cards")
+}
+
+/// Fatura mensal de um cartao.
+model Invoice {
+  id                    String        @id @default(uuid()) @db.Uuid
+  creditCardId          String        @db.Uuid
+  /// Primeiro dia do mes de competencia.
+  referenceMonth        DateTime      @db.Date
+  closingDate           DateTime      @db.Date
+  dueDate               DateTime      @db.Date
+  totalInCents          Int           @default(0)
+  status                InvoiceStatus @default(OPEN)
+  paidWithTransactionId String?       @unique @db.Uuid
+  paidAt                DateTime?
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+
+  creditCard          CreditCard    @relation(fields: [creditCardId], references: [accountId], onDelete: Cascade)
+  /// Lancamentos que compoem a fatura.
+  items               Transaction[] @relation("InvoiceItems")
+  /// Lancamento de pagamento da fatura (o que de fato debita a conta corrente).
+  paidWithTransaction Transaction?  @relation("InvoicePayment", fields: [paidWithTransactionId], references: [id], onDelete: SetNull)
+
+  @@unique([creditCardId, referenceMonth])
+  @@index([creditCardId, status])
+  @@index([dueDate])
+  @@map("invoices")
+}
+
+// =============================================================================
+// CATEGORIAS
+// =============================================================================
+
+/// Hierarquia de NO MAXIMO dois niveis (mae -> filha), garantido no dominio:
+/// uma categoria com `parentId` nao pode ser mae de ninguem.
+///
+/// `workspaceId` nulo = categoria semente do sistema, visivel para todos e
+/// nao editavel. O usuario que quiser mudar ganha uma copia no workspace dele.
+model Category {
+  id          String           @id @default(uuid()) @db.Uuid
+  workspaceId String?          @db.Uuid
+  name        String           @db.VarChar(80)
+  type        CategoryType
+  icon        String?          @db.VarChar(64)
+  color       String?          @db.VarChar(32)
+  parentId    String?          @db.Uuid
+  /// Ordem manual (drag-and-drop). Menor primeiro.
+  sortOrder   Int              @default(0)
+  /// So faz sentido em categoria INCOME. Classifica o rendimento para o
+  /// relatorio anual: tributavel, isento ou de tributacao exclusiva.
+  taxNature   TaxIncomeNature?
+  /// Identidade da SEMENTE do sistema. So categorias globais tem.
+  systemKey   String?          @unique @db.VarChar(64)
+  /// Semente de ORIGEM de uma copia dentro do workspace.
+  ///
+  /// Campo separado de `systemKey` de proposito: sao duas afirmacoes
+  /// diferentes -- "eu SOU a semente X" e "eu VIM da semente X". Com um campo
+  /// so, a copia colidiria com a propria semente no indice unico.
+  ///
+  /// O unique composto com `workspaceId` e' o que impede copiar a mesma
+  /// semente duas vezes para o mesmo workspace, mesmo com dois cliques em
+  /// paralelo -- checagem no codigo sozinha tem janela de corrida.
+  sourceSystemKey String?      @db.VarChar(64)
+  archivedAt  DateTime?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  workspace         Workspace?          @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  parent            Category?           @relation("CategoryTree", fields: [parentId], references: [id], onDelete: Restrict)
+  children          Category[]          @relation("CategoryTree")
+  transactions      Transaction[]
+  budgets           Budget[]
+  categoryRules     CategoryRule[]
+  stagedSuggestions StagedTransaction[] @relation("StagedSuggestedCategory")
+
+  @@unique([workspaceId, id])
+  @@unique([workspaceId, sourceSystemKey])
+  @@index([workspaceId, type, archivedAt])
+  @@index([parentId])
+  @@map("categories")
+}
+
+// =============================================================================
+// TRANSACOES
+// =============================================================================
+
+/// Regra 4: TRANSFER nao e' receita nem despesa. Gera duas pernas com o mesmo
+/// `transferPairId` (uma negativa na origem, uma positiva no destino) e fica
+/// fora de todo relatorio de fluxo.
+///
+/// Regra 6: em despesa dividida, `amountInCents` e' o valor CHEIO -- e' ele que
+/// afeta o saldo da conta. A minha parte (soma dos `ExpenseSplit` onde eu sou o
+/// participante) e' o que afeta relatorio, orcamento e gasto por categoria.
+model Transaction {
+  id                String            @id @default(uuid()) @db.Uuid
+  workspaceId       String            @db.Uuid
+  accountId         String            @db.Uuid
+  categoryId        String?           @db.Uuid
+  createdByUserId   String            @db.Uuid
+  type              TransactionType
+  /// Sempre positivo. O sinal vem do `type` (e do par, no caso de TRANSFER).
+  amountInCents     Int
+  /// Dia de calendario, sem hora. Competencia do lancamento.
+  date              DateTime          @db.Date
+  description       String            @db.VarChar(255)
+  status            TransactionStatus @default(SETTLED)
+  notes             String?
+  /// Fonte pagadora / beneficiario. Alimenta o agrupamento do relatorio anual.
+  counterpartyName  String?           @db.VarChar(160)
+  /// CPF/CNPJ da fonte pagadora, quando o usuario informa (IRPF).
+  counterpartyTaxId String?           @db.VarChar(20)
+
+  // -- Recorrencia -----------------------------------------------------------
+  recurrenceId   String?   @db.Uuid
+  /// Data da ocorrencia que gerou este lancamento. Junto com `recurrenceId`
+  /// forma a chave unica que torna a materializacao do job idempotente.
+  occurrenceDate DateTime? @db.Date
+
+  // -- Parcelamento ----------------------------------------------------------
+  installmentGroupId String? @db.Uuid
+  /// 1..totalInstallments.
+  installmentNumber  Int?
+
+  // -- Transferencia ---------------------------------------------------------
+  /// Compartilhado pelas duas pernas da mesma transferencia.
+  transferPairId String?      @db.Uuid
+  /// SOURCE debita a conta, DESTINATION credita. Preenchido so em TRANSFER.
+  transferLeg    TransferLeg?
+
+  // -- Cartao de credito -----------------------------------------------------
+  /// Fatura em que a compra caiu (regra 5).
+  invoiceId String? @db.Uuid
+
+  // -- Importacao ------------------------------------------------------------
+  /// FITID do OFX. Unico por conta, nunca globalmente.
+  externalId    String? @db.VarChar(128)
+  /// sha256(accountId|date|amountInCents|memoNormalizado) -- match exato de CSV.
+  importHash    String? @db.VarChar(64)
+  importBatchId String? @db.Uuid
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  workspace        Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  account          Account           @relation(fields: [accountId], references: [id], onDelete: Restrict)
+  category         Category?         @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  createdBy        User              @relation("TransactionCreatedBy", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  recurrence       Recurrence?       @relation(fields: [recurrenceId], references: [id], onDelete: SetNull)
+  installmentGroup InstallmentGroup? @relation(fields: [installmentGroupId], references: [id], onDelete: Cascade)
+  invoice          Invoice?          @relation("InvoiceItems", fields: [invoiceId], references: [id], onDelete: SetNull)
+  importBatch      ImportBatch?      @relation(fields: [importBatchId], references: [id], onDelete: SetNull)
+
+  attachments      Attachment[]
+  splits           ExpenseSplit[]
+  settlements      Settlement[]        @relation("SettlementTransaction")
+  paidInvoice      Invoice?            @relation("InvoicePayment")
+  goalContribution GoalContribution?   @relation("GoalContributionTransaction")
+  stagedMatches    StagedTransaction[] @relation("StagedMatchedTransaction")
+
+  /// Barreira contra duplicata de OFX: o FITID e' unico POR CONTA.
+  /// NULLs sao distintos no Postgres, entao lancamentos manuais nao colidem.
+  @@unique([accountId, externalId])
+  /// Materializacao idempotente da recorrencia.
+  @@unique([recurrenceId, occurrenceDate])
+  @@unique([workspaceId, id])
+  @@index([workspaceId, date])
+  @@index([workspaceId, accountId, date])
+  @@index([workspaceId, categoryId, date])
+  @@index([workspaceId, status, date])
+  @@index([workspaceId, type, date])
+  @@index([accountId, importHash])
+  @@index([transferPairId])
+  @@index([installmentGroupId])
+  @@index([invoiceId])
+  @@index([importBatchId])
+  @@map("transactions")
+}
+
+/// Cabecalho de uma compra parcelada. As parcelas sao Transactions com
+/// `installmentGroupId` e `installmentNumber`.
+model InstallmentGroup {
+  id                 String   @id @default(uuid()) @db.Uuid
+  workspaceId        String   @db.Uuid
+  description        String   @db.VarChar(255)
+  totalAmountInCents Int
+  totalInstallments  Int
+  firstDueDate       DateTime @db.Date
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  workspace    Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  installments Transaction[]
+
+  @@unique([workspaceId, id])
+  @@index([workspaceId])
+  @@map("installment_groups")
+}
+
+/// Contas fixas / lancamentos recorrentes.
+///
+/// Um job diario materializa as ocorrencias dentro de uma janela de 60 dias
+/// como Transactions PENDING.
+model Recurrence {
+  id                 String              @id @default(uuid()) @db.Uuid
+  workspaceId        String              @db.Uuid
+  name               String              @db.VarChar(120)
+  /// Template do lancamento: accountId, categoryId, type, amountInCents,
+  /// description, notes. Validado por schema Zod antes de gravar.
+  templateData       Json
+  frequency          RecurrenceFrequency
+  /// A cada quantos periodos. 2 + MONTHLY = bimestral.
+  interval           Int                 @default(1)
+  /// Para MONTHLY/YEARLY (1-31). Mes curto usa o ultimo dia disponivel.
+  dayOfMonth         Int?
+  /// Para WEEKLY (0 = domingo).
+  weekday            Int?
+  /// Para YEARLY (1-12).
+  monthOfYear        Int?
+  startDate          DateTime            @db.Date
+  endDate            DateTime?           @db.Date
+  nextRunAt          DateTime            @db.Date
+  /// Ate onde o job ja materializou. Evita reprocessar a janela inteira.
+  materializedUntil  DateTime?           @db.Date
+  /// Dias de antecedencia do lembrete. Nulo = sem lembrete.
+  reminderDaysBefore Int?
+  isActive           Boolean             @default(true)
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+
+  workspace    Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  transactions Transaction[]
+  skips        RecurrenceSkip[]
+
+  @@unique([workspaceId, id])
+  @@index([workspaceId, isActive])
+  @@index([isActive, nextRunAt])
+  @@map("recurrences")
+}
+
+/// Ocorrencia pulada de uma serie. Existe para o job nao recriar o que o
+/// usuario dispensou -- pular uma nao quebra a serie.
+model RecurrenceSkip {
+  id             String   @id @default(uuid()) @db.Uuid
+  recurrenceId   String   @db.Uuid
+  occurrenceDate DateTime @db.Date
+  reason         String?  @db.VarChar(255)
+  createdAt      DateTime @default(now())
+
+  recurrence Recurrence @relation(fields: [recurrenceId], references: [id], onDelete: Cascade)
+
+  @@unique([recurrenceId, occurrenceDate])
+  @@map("recurrence_skips")
+}
+
+/// Comprovante guardado no MinIO.
+///
+/// Regra 8: excluir a transacao remove o objeto no MinIO. O Cascade aqui apaga
+/// a LINHA; apagar o OBJETO e' responsabilidade do caso de uso, que le os
+/// `objectKey` antes de deletar e enfileira a remocao no storage.
+model Attachment {
+  id               String   @id @default(uuid()) @db.Uuid
+  workspaceId      String   @db.Uuid
+  transactionId    String   @db.Uuid
+  bucket           String   @db.VarChar(63)
+  objectKey        String   @unique @db.VarChar(512)
+  originalName     String   @db.VarChar(255)
+  mimeType         String   @db.VarChar(127)
+  sizeInBytes      Int
+  /// sha256 do conteudo, para deduplicar upload repetido.
+  checksum         String   @db.VarChar(64)
+  uploadedByUserId String?  @db.Uuid
+  createdAt        DateTime @default(now())
+
+  workspace   Workspace   @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  transaction Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  uploadedBy  User?       @relation("AttachmentUploadedBy", fields: [uploadedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([workspaceId])
+  @@index([transactionId])
+  @@map("attachments")
+}
+
+// =============================================================================
+// ORCAMENTOS E METAS
+// =============================================================================
+
+/// Limite mensal por categoria.
+///
+/// O consumo considera a MINHA PARTE em despesas divididas, nunca o valor cheio
+/// (regra 6). Orcamento em categoria-mae agrega as filhas.
+model Budget {
+  id             String   @id @default(uuid()) @db.Uuid
+  workspaceId    String   @db.Uuid
+  categoryId     String   @db.Uuid
+  /// Primeiro dia do mes.
+  referenceMonth DateTime @db.Date
+  limitInCents   Int
+  /// Sobra do mes anterior soma ao limite deste mes.
+  rollover       Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  workspace Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  category  Category      @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  alerts    BudgetAlert[]
+
+  @@unique([workspaceId, categoryId, referenceMonth])
+  @@unique([workspaceId, id])
+  @@index([workspaceId, referenceMonth])
+  @@map("budgets")
+}
+
+/// Marca que um limiar ja foi notificado neste orcamento (que ja e' mensal).
+///
+/// E' o antidoto para os quinze e-mails: sem isso, cada transacao acima de 80%
+/// dispara um alerta novo.
+model BudgetAlert {
+  id         String   @id @default(uuid()) @db.Uuid
+  budgetId   String   @db.Uuid
+  /// Limiar em pontos percentuais: 80 ou 100.
+  threshold  Int
+  notifiedAt DateTime @default(now())
+
+  budget Budget @relation(fields: [budgetId], references: [id], onDelete: Cascade)
+
+  @@unique([budgetId, threshold])
+  @@map("budget_alerts")
+}
+
+model Goal {
+  id                  String    @id @default(uuid()) @db.Uuid
+  workspaceId         String    @db.Uuid
+  name                String    @db.VarChar(120)
+  targetAmountInCents Int
+  deadline            DateTime? @db.Date
+  icon                String?   @db.VarChar(64)
+  color               String?   @db.VarChar(32)
+  /// Conta de reserva. Se preenchida, o aporte gera uma transferencia real.
+  linkedAccountId     String?   @db.Uuid
+  achievedAt          DateTime?
+  archivedAt          DateTime?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  workspace     Workspace          @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  linkedAccount Account?           @relation("GoalLinkedAccount", fields: [linkedAccountId], references: [id], onDelete: SetNull)
+  contributions GoalContribution[]
+
+  @@unique([workspaceId, id])
+  @@index([workspaceId, archivedAt])
+  @@map("goals")
+}
+
+model GoalContribution {
+  id              String   @id @default(uuid()) @db.Uuid
+  goalId          String   @db.Uuid
+  amountInCents   Int
+  date            DateTime @db.Date
+  createdByUserId String   @db.Uuid
+  note            String?  @db.VarChar(255)
+  /// Transferencia gerada quando a meta tem conta vinculada.
+  transactionId   String?  @unique @db.Uuid
+  createdAt       DateTime @default(now())
+
+  goal        Goal         @relation(fields: [goalId], references: [id], onDelete: Cascade)
+  createdBy   User         @relation("GoalContributionCreatedBy", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  transaction Transaction? @relation("GoalContributionTransaction", fields: [transactionId], references: [id], onDelete: SetNull)
+
+  @@index([goalId, date])
+  @@map("goal_contributions")
+}
+
+// =============================================================================
+// DIVISAO DE DESPESAS
+// =============================================================================
+
+/// Rateio de UM lancamento. Nao confundir com workspace compartilhado: aqui o
+/// dado continua sendo meu, so o custo e' repartido.
+///
+/// A soma dos `amountInCents` dos splits tem que fechar EXATAMENTE com o
+/// `amountInCents` da transacao. Na divisao igualitaria os centavos que sobram
+/// do arredondamento sao distribuidos entre os primeiros participantes.
+model ExpenseSplit {
+  id                String      @id @default(uuid()) @db.Uuid
+  workspaceId       String      @db.Uuid
+  transactionId     String      @db.Uuid
+  /// Nulo quando a pessoa ainda nao tem conta na plataforma.
+  participantUserId String?     @db.Uuid
+  participantName   String      @db.VarChar(120)
+  participantEmail  String?     @db.VarChar(255)
+  shareType         ShareType
+  /// EQUAL: ignorado. PERCENT: pontos-base (33,33% = 3333). FIXED: centavos.
+  shareValue        Int?
+  /// Valor efetivo desta pessoa, ja com os centavos de resto distribuidos.
+  amountInCents     Int
+  /// Marca a linha que representa o dono do lancamento -- e' esta que entra em
+  /// relatorio e orcamento.
+  isOwner           Boolean     @default(false)
+  status            SplitStatus @default(PENDING)
+  settledAt         DateTime?
+  settlementId      String?     @db.Uuid
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+
+  workspace   Workspace   @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  transaction Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  participant User?       @relation("ExpenseSplitParticipant", fields: [participantUserId], references: [id], onDelete: SetNull)
+  settlement  Settlement? @relation(fields: [settlementId], references: [id], onDelete: SetNull)
+
+  @@index([workspaceId, status])
+  @@index([transactionId])
+  @@index([participantUserId, status])
+  @@index([participantEmail])
+  @@map("expense_splits")
+}
+
+/// Acerto de contas entre duas pessoas.
+///
+/// `fromUserId`/`toUserId` sao opcionais porque um participante pode nao ter
+/// conta na plataforma -- nesse caso vale o par nome + e-mail.
+model Settlement {
+  id            String   @id @default(uuid()) @db.Uuid
+  workspaceId   String   @db.Uuid
+  fromUserId    String?  @db.Uuid
+  fromName      String   @db.VarChar(120)
+  fromEmail     String?  @db.VarChar(255)
+  toUserId      String?  @db.Uuid
+  toName        String   @db.VarChar(120)
+  toEmail       String?  @db.VarChar(255)
+  amountInCents Int
+  date          DateTime @db.Date
+  note          String?  @db.VarChar(255)
+  /// Lancamento gerado, quando o usuario pede para registrar o movimento.
+  transactionId String?  @db.Uuid
+  createdAt     DateTime @default(now())
+
+  workspace   Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  fromUser    User?          @relation("SettlementFrom", fields: [fromUserId], references: [id], onDelete: SetNull)
+  toUser      User?          @relation("SettlementTo", fields: [toUserId], references: [id], onDelete: SetNull)
+  transaction Transaction?   @relation("SettlementTransaction", fields: [transactionId], references: [id], onDelete: SetNull)
+  splits      ExpenseSplit[]
+
+  @@unique([workspaceId, id])
+  @@index([workspaceId, date])
+  @@index([fromUserId])
+  @@index([toUserId])
+  @@map("settlements")
+}
+
+// =============================================================================
+// IMPORTACAO
+// =============================================================================
+
+model ImportBatch {
+  id              String            @id @default(uuid()) @db.Uuid
+  workspaceId     String            @db.Uuid
+  accountId       String            @db.Uuid
+  fileName        String            @db.VarChar(255)
+  /// Objeto original no MinIO, para reprocessar sem novo upload.
+  objectKey       String?           @db.VarChar(512)
+  source          ImportSource
+  status          ImportBatchStatus @default(STAGED)
+  totalRows       Int               @default(0)
+  importedRows    Int               @default(0)
+  createdByUserId String            @db.Uuid
+  committedAt     DateTime?
+  revertedAt      DateTime?
+  errorMessage    String?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  workspace    Workspace           @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  account      Account             @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  createdBy    User                @relation("ImportBatchCreatedBy", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  rows         StagedTransaction[]
+  /// Lancamentos criados por este lote. E' o que permite desfazer o commit.
+  transactions Transaction[]
+
+  @@unique([workspaceId, id])
+  @@index([workspaceId, status])
+  @@index([accountId])
+  @@map("import_batches")
+}
+
+/// Linha crua do extrato, antes da conciliacao.
+model StagedTransaction {
+  id                   String         @id @default(uuid()) @db.Uuid
+  batchId              String         @db.Uuid
+  /// Linha original (registro OFX ou objeto do CSV), para auditoria.
+  rawPayload           Json
+  date                 DateTime       @db.Date
+  amountInCents        Int
+  memo                 String         @db.VarChar(512)
+  /// Memo normalizado (minusculo, sem acento/pontuacao/numeros de documento).
+  normalizedMemo       String         @db.VarChar(512)
+  /// FITID do OFX.
+  fitId                String?        @db.VarChar(128)
+  importHash           String?        @db.VarChar(64)
+  matchStatus          MatchStatus    @default(NEW)
+  matchedTransactionId String?        @db.Uuid
+  /// 0-1000 (milesimos). Similaridade de trigrama; >700 vira SIMILAR.
+  similarityScore      Int?
+  decision             ImportDecision @default(IMPORT)
+  suggestedCategoryId  String?        @db.Uuid
+  rowNumber            Int
+  createdAt            DateTime       @default(now())
+  updatedAt            DateTime       @updatedAt
+
+  batch              ImportBatch  @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  matchedTransaction Transaction? @relation("StagedMatchedTransaction", fields: [matchedTransactionId], references: [id], onDelete: SetNull)
+  suggestedCategory  Category?    @relation("StagedSuggestedCategory", fields: [suggestedCategoryId], references: [id], onDelete: SetNull)
+
+  @@unique([batchId, rowNumber])
+  @@index([batchId, matchStatus])
+  @@map("staged_transactions")
+}
+
+/// Mapeamento de colunas de CSV, salvo por banco para reuso.
+model ImportMapping {
+  id          String   @id @default(uuid()) @db.Uuid
+  workspaceId String   @db.Uuid
+  /// Nulo = mapeamento generico do workspace.
+  accountId   String?  @db.Uuid
+  name        String   @db.VarChar(120)
+  /// { date: "Data", amount: "Valor", memo: "Descricao", dateFormat: "dd/MM/yyyy",
+  ///   decimalSeparator: ",", delimiter: ";", skipRows: 1, encoding: "latin1" }
+  mapping     Json
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  account   Account?  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, name])
+  @@map("import_mappings")
+}
+
+/// Regra aprendida de categorizacao: padrao de memo -> categoria.
+///
+/// Alimentada pelas decisoes do usuario na tela de conciliacao. `hitCount`
+/// desempata quando mais de um padrao casa.
+model CategoryRule {
+  id          String    @id @default(uuid()) @db.Uuid
+  workspaceId String    @db.Uuid
+  /// Padrao ja normalizado, comparado por `contains`.
+  pattern     String    @db.VarChar(255)
+  categoryId  String    @db.Uuid
+  hitCount    Int       @default(0)
+  lastUsedAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  category  Category  @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, pattern])
+  @@index([workspaceId])
+  @@map("category_rules")
+}
+
+// =============================================================================
+// EXPORTACAO
+// =============================================================================
+
+model ExportJob {
+  id                String          @id @default(uuid()) @db.Uuid
+  workspaceId       String          @db.Uuid
+  requestedByUserId String          @db.Uuid
+  format            ExportFormat
+  reportType        ReportType
+  /// Periodo, contas, categorias e demais filtros do relatorio.
+  params            Json
+  status            ExportJobStatus @default(QUEUED)
+  bucket            String?         @db.VarChar(63)
+  objectKey         String?         @db.VarChar(512)
+  fileSizeInBytes   Int?
+  /// Depois disso o arquivo e' apagado do MinIO pela rotina de limpeza (24h).
+  expiresAt         DateTime?
+  errorMessage      String?
+  startedAt         DateTime?
+  completedAt       DateTime?
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  requestedBy User      @relation("ExportJobRequestedBy", fields: [requestedByUserId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId, status])
+  @@index([expiresAt])
+  @@map("export_jobs")
+}
+
+// =============================================================================
+// RELATORIO ANUAL (IRPF)
+// =============================================================================
+
+/// Linha de "Bens e direitos" do ano-base, com os campos que o usuario edita a
+/// mao (codigo do bem e discriminacao). As posicoes sao calculadas e gravadas
+/// para o numero nao mudar depois que a declaracao ja foi entregue.
+///
+/// Ferramenta de APOIO a declaracao. Nao substitui contador.
+model TaxAsset {
+  id                      String   @id @default(uuid()) @db.Uuid
+  workspaceId             String   @db.Uuid
+  /// Ano-base da declaracao.
+  referenceYear           Int
+  accountId               String?  @db.Uuid
+  description             String   @db.VarChar(255)
+  /// Codigo do bem conforme a tabela da Receita (ex.: "61" - deposito bancario).
+  assetCode               String?  @db.VarChar(8)
+  discrimination          String?
+  /// Posicao em 31/12 do ano-base.
+  positionInCents         Int      @default(0)
+  /// Posicao em 31/12 do ano anterior.
+  previousPositionInCents Int      @default(0)
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  account   Account?  @relation(fields: [accountId], references: [id], onDelete: SetNull)
+
+  @@unique([workspaceId, referenceYear, accountId, description])
+  @@index([workspaceId, referenceYear])
+  @@map("tax_assets")
+}
+
+// =============================================================================
+// NOTIFICACOES E AUDITORIA
+// =============================================================================
+
+model Notification {
+  id          String           @id @default(uuid()) @db.Uuid
+  userId      String           @db.Uuid
+  workspaceId String?          @db.Uuid
+  type        NotificationType
+  title       String           @db.VarChar(200)
+  body        String
+  /// Payload para o deep link (ex.: { budgetId, month }).
+  data        Json?
+  readAt      DateTime?
+  createdAt   DateTime         @default(now())
+
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace Workspace? @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt, createdAt])
+  @@map("notifications")
+}
+
+/// Trilha das acoes sensiveis de um workspace compartilhado.
+model AuditLog {
+  id          String      @id @default(uuid()) @db.Uuid
+  workspaceId String      @db.Uuid
+  actorUserId String?     @db.Uuid
+  action      AuditAction
+  entityType  String      @db.VarChar(60)
+  entityId    String?     @db.VarChar(64)
+  /// Antes/depois do que mudou, sem dado sensivel.
+  metadata    Json?
+  ipAddress   String?     @db.VarChar(64)
+  createdAt   DateTime    @default(now())
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  actor     User?     @relation("AuditLogActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([workspaceId, createdAt])
+  @@index([actorUserId])
+  @@map("audit_logs")
+}

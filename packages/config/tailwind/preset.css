@@ -1,0 +1,115 @@
+/*
+ * Preset Tailwind v4 do finapp.
+ *
+ * Regra: componente nunca usa cor fixa (`bg-slate-900`). Sempre token
+ * semantico (`bg-surface`, `text-content-muted`, `text-expense`). Trocar o tema
+ * e' trocar o valor do token, nao cacar classe em componente.
+ *
+ * Os tokens ficam em `@theme` porque e' dai que o Tailwind v4 GERA as
+ * utilities: `--color-surface` vira `bg-surface`, `text-surface`,
+ * `border-surface`. Declarar so em `:root` criaria a variavel sem gerar
+ * utility nenhuma.
+ *
+ * O modo escuro redefine as MESMAS variaveis dentro de `.dark`. Como as
+ * utilities referenciam `var(--color-*)`, elas passam a apontar para o valor
+ * escuro sem precisar de uma segunda classe.
+ */
+
+@theme {
+  /* Tipografia */
+  --font-sans:
+    'Inter Variable', 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', 'Menlo', monospace;
+
+  --radius-card: 0.75rem;
+
+  /* Superficies */
+  --color-canvas: oklch(0.99 0.002 250);
+  --color-surface: oklch(1 0 0);
+  --color-surface-raised: oklch(0.985 0.003 250);
+  --color-surface-sunken: oklch(0.965 0.004 250);
+  --color-overlay: oklch(0.21 0.02 250 / 0.45);
+
+  /* Texto */
+  --color-content: oklch(0.22 0.02 255);
+  --color-content-muted: oklch(0.52 0.02 255);
+  --color-content-subtle: oklch(0.65 0.015 255);
+  --color-content-inverted: oklch(0.99 0 0);
+
+  /* Bordas */
+  --color-border-subtle: oklch(0.92 0.005 255);
+  --color-border-strong: oklch(0.85 0.008 255);
+
+  /* Marca */
+  --color-brand: oklch(0.58 0.16 250);
+  --color-brand-hover: oklch(0.52 0.17 250);
+  --color-brand-contrast: oklch(0.99 0 0);
+
+  /* Semantica financeira: receita, despesa, transferencia */
+  --color-income: oklch(0.52 0.15 155);
+  --color-income-surface: oklch(0.95 0.04 155);
+  --color-expense: oklch(0.52 0.19 25);
+  --color-expense-surface: oklch(0.96 0.03 25);
+  --color-transfer: oklch(0.55 0.06 255);
+  --color-transfer-surface: oklch(0.95 0.015 255);
+
+  /* Estados / faixas de orcamento (verde < 80%, ambar 80-99%, vermelho >= 100%) */
+  --color-success: oklch(0.52 0.15 155);
+  --color-warning: oklch(0.62 0.16 75);
+  --color-danger: oklch(0.52 0.19 25);
+  --color-info: oklch(0.55 0.12 235);
+
+  /* Graficos (Recharts) */
+  --color-chart-1: oklch(0.62 0.15 250);
+  --color-chart-2: oklch(0.65 0.14 165);
+  --color-chart-3: oklch(0.72 0.15 75);
+  --color-chart-4: oklch(0.62 0.17 15);
+  --color-chart-5: oklch(0.6 0.14 305);
+  --color-chart-6: oklch(0.68 0.1 200);
+}
+
+/*
+ * Modo escuro.
+ *
+ * A classe `.dark` e' posta na raiz por um script INLINE no `index.html`, antes
+ * do bundle carregar -- se ficasse a cargo do React, todo reload em modo escuro
+ * piscaria branco entre a primeira pintura e a montagem do componente.
+ */
+.dark {
+  --color-canvas: oklch(0.17 0.012 260);
+  --color-surface: oklch(0.21 0.014 260);
+  --color-surface-raised: oklch(0.25 0.016 260);
+  --color-surface-sunken: oklch(0.14 0.012 260);
+  --color-overlay: oklch(0.1 0.01 260 / 0.6);
+
+  --color-content: oklch(0.96 0.004 260);
+  --color-content-muted: oklch(0.72 0.012 260);
+  --color-content-subtle: oklch(0.58 0.012 260);
+  --color-content-inverted: oklch(0.17 0.012 260);
+
+  --color-border-subtle: oklch(0.3 0.014 260);
+  --color-border-strong: oklch(0.4 0.018 260);
+
+  --color-brand: oklch(0.68 0.15 250);
+  --color-brand-hover: oklch(0.74 0.15 250);
+  --color-brand-contrast: oklch(0.16 0.01 260);
+
+  --color-income: oklch(0.72 0.15 155);
+  --color-income-surface: oklch(0.28 0.05 155);
+  --color-expense: oklch(0.68 0.17 25);
+  --color-expense-surface: oklch(0.29 0.06 25);
+  --color-transfer: oklch(0.7 0.05 255);
+  --color-transfer-surface: oklch(0.27 0.02 255);
+
+  --color-success: oklch(0.72 0.15 155);
+  --color-warning: oklch(0.79 0.15 75);
+  --color-danger: oklch(0.68 0.17 25);
+  --color-info: oklch(0.7 0.12 235);
+
+  --color-chart-1: oklch(0.7 0.14 250);
+  --color-chart-2: oklch(0.73 0.13 165);
+  --color-chart-3: oklch(0.79 0.14 75);
+  --color-chart-4: oklch(0.7 0.16 15);
+  --color-chart-5: oklch(0.7 0.13 305);
+  --color-chart-6: oklch(0.75 0.09 200);
+}

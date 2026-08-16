@@ -1,0 +1,12 @@
+packages:
+  - "apps/*"
+  - "packages/*"
+
+# pnpm 10 bloqueia postinstall por padrao. Estes precisam rodar:
+# prisma baixa os engines, esbuild/swc instalam o binario da plataforma.
+onlyBuiltDependencies:
+  - "@prisma/client"
+  - "@prisma/engines"
+  - "@swc/core"
+  - esbuild
+  - prisma

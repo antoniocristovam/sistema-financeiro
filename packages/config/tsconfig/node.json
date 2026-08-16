@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "display": "finapp node / nestjs",
+  "extends": "./base.json",
+  "compilerOptions": {
+    "module": "CommonJS",
+    "moduleResolution": "Node",
+    "target": "ES2023",
+    "lib": ["ES2023"],
+    "outDir": "dist",
+    "rootDir": "src",
+    // DENTRO do outDir de proposito. Com o .tsbuildinfo fora, o `deleteOutDir`
+    // do Nest apaga o dist, o tsc incremental acha que nada mudou e o build
+    // termina com exit 0 sem emitir NADA.
+    "tsBuildInfoFile": "dist/.tsbuildinfo",
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "isolatedModules": false,
+    "strictPropertyInitialization": false
+  }
+}

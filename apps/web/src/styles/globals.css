@@ -1,0 +1,31 @@
+@import 'tailwindcss';
+
+/* Tokens semanticos do finapp (claro/escuro). Componentes usam `bg-surface`,
+   `text-content-muted`, `text-expense` -- nunca `bg-slate-900`. */
+@import '@finapp/config/tailwind/preset';
+
+@import '@finapp/ui/styles.css';
+
+/* O Tailwind v4 precisa saber onde procurar classes fora deste app. */
+@source '../../../../packages/ui/src';
+
+/* `.dark` na raiz e' colocado pelo script inline do index.html. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    background-color: var(--color-canvas);
+    color: var(--color-content);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Coluna de dinheiro alinhada: digitos de largura fixa. */
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+}

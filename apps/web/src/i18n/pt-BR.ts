@@ -1,0 +1,300 @@
+/**
+ * Dicionario pt-BR.
+ *
+ * As strings ficam em arquivo de traducao desde o primeiro commit. Extrair
+ * texto espalhado por JSX depois e' retrabalho garantido -- e sempre sobra
+ * alguma string escondida em um `title` ou `aria-label`.
+ */
+export const ptBR = {
+  common: {
+    appName: 'finapp',
+    continue: 'Continuar',
+    back: 'Voltar',
+    skip: 'Pular por enquanto',
+    finish: 'Concluir',
+    save: 'Salvar',
+    cancel: 'Cancelar',
+    loading: 'Carregando...',
+    optional: 'opcional',
+    genericError: 'Algo deu errado. Tente de novo.',
+    requiredField: 'Campo obrigatório',
+  },
+
+  auth: {
+    signIn: {
+      title: 'Entrar',
+      subtitle: 'Bem-vindo de volta.',
+      email: 'E-mail',
+      password: 'Senha',
+      submit: 'Entrar',
+      forgotPassword: 'Esqueci minha senha',
+      noAccount: 'Ainda não tem conta?',
+      signUpLink: 'Criar conta',
+    },
+    signUp: {
+      title: 'Criar conta',
+      subtitle: 'Leva menos de um minuto.',
+      name: 'Nome',
+      email: 'E-mail',
+      password: 'Senha',
+      passwordHint: 'Mínimo de 8 caracteres, com uma maiúscula e um número.',
+      submit: 'Criar conta',
+      hasAccount: 'Já tem conta?',
+      signInLink: 'Entrar',
+    },
+    forgotPassword: {
+      title: 'Recuperar senha',
+      subtitle: 'Enviamos um link para você criar uma nova senha.',
+      email: 'E-mail',
+      submit: 'Enviar link',
+      /** Mesma mensagem exista o e-mail ou não: a rota não confirma cadastro. */
+      sent: 'Se existir uma conta com esse e-mail, o link chegou na caixa de entrada.',
+      backToSignIn: 'Voltar para o login',
+    },
+    resetPassword: {
+      title: 'Criar nova senha',
+      password: 'Nova senha',
+      passwordConfirmation: 'Confirme a nova senha',
+      submit: 'Salvar nova senha',
+      success: 'Senha alterada. Entre com a nova senha.',
+      invalidLink: 'Link inválido ou expirado. Peça um novo.',
+    },
+    verifyEmail: {
+      title: 'Confirmando seu e-mail',
+      success: 'E-mail confirmado.',
+      error: 'Link inválido ou expirado. Peça um novo.',
+      goToApp: 'Ir para o app',
+    },
+    signOut: 'Sair',
+  },
+
+  onboarding: {
+    stepLabel: 'Passo {current} de {total}',
+    steps: {
+      income: 'Renda',
+      account: 'Conta',
+      cards: 'Cartões',
+      categories: 'Categorias',
+      savings: 'Meta',
+    },
+
+    income: {
+      title: 'Quanto você recebe por mês?',
+      subtitle: 'Serve de base para as metas e o resumo do mês. Dá para mudar depois.',
+      amount: 'Renda mensal',
+      payday: 'Dia do pagamento',
+      paydayHint: 'Deixe em branco se a renda for variável.',
+    },
+    account: {
+      title: 'Onde está seu dinheiro hoje?',
+      subtitle: 'Comece por uma conta. As outras entram depois.',
+      name: 'Nome da conta',
+      namePlaceholder: 'Conta corrente',
+      type: 'Tipo',
+      types: {
+        CHECKING: 'Conta corrente',
+        SAVINGS: 'Poupança',
+        CASH: 'Dinheiro / carteira',
+        INVESTMENT: 'Investimento',
+      },
+      balance: 'Saldo atual',
+      balanceHint: 'Pode ser negativo, se a conta estiver no vermelho.',
+      institution: 'Instituição',
+      institutionPlaceholder: 'Banco Digital',
+    },
+    cards: {
+      title: 'Você usa cartão de crédito?',
+      subtitle:
+        'A compra no cartão não sai da conta na hora: ela entra na fatura e o saldo só muda quando você paga.',
+      addCard: 'Adicionar cartão',
+      removeCard: 'Remover',
+      name: 'Nome do cartão',
+      namePlaceholder: 'Cartão Platinum',
+      limit: 'Limite',
+      closingDay: 'Dia do fechamento',
+      dueDay: 'Dia do vencimento',
+      sameDayError: 'Fechamento e vencimento não podem cair no mesmo dia.',
+      empty: 'Nenhum cartão adicionado.',
+    },
+    categories: {
+      title: 'O que você quer acompanhar?',
+      subtitle: 'Escolha as categorias que fazem sentido. Você pode editar todas depois.',
+      expenses: 'Despesas',
+      income: 'Receitas',
+      selectAll: 'Selecionar todas',
+      clearAll: 'Limpar seleção',
+      selectedCount: '{count} selecionadas',
+      atLeastOne: 'Escolha pelo menos uma categoria.',
+      subcategoriesNote: 'As subcategorias vêm junto.',
+    },
+    savings: {
+      title: 'Quanto você quer guardar por mês?',
+      subtitle: 'Uma meta de economia ajuda a saber se o mês fechou como você queria.',
+      percent: 'Percentual da renda',
+      preview: 'Isso dá {amount} por mês.',
+      noIncome: 'Defina sua renda no passo 1 para ver a estimativa.',
+    },
+
+    complete: {
+      title: 'Tudo pronto',
+      subtitle: 'Sua carteira está montada. Vamos ao primeiro lançamento.',
+      cta: 'Ir para o dashboard',
+    },
+  },
+
+  nav: {
+    dashboard: 'Dashboard',
+    transactions: 'Transações',
+    accounts: 'Contas',
+    categories: 'Categorias',
+    cards: 'Cartões & faturas',
+    splits: 'Divisões',
+    openMenu: 'Abrir menu',
+    comingSoon: 'Em breve',
+  },
+
+  workspace: {
+    roles: {
+      OWNER: 'Dono',
+      ADMIN: 'Administrador',
+      MEMBER: 'Membro',
+      VIEWER: 'Visualizador',
+    },
+  },
+
+  accounts: {
+    title: 'Contas',
+    subtitle: 'Onde seu dinheiro está.',
+    total: 'Patrimônio',
+    totalHint: 'Soma das contas. A dívida do cartão vive na fatura.',
+    new: 'Nova conta',
+    edit: 'Editar conta',
+    name: 'Nome',
+    type: 'Tipo',
+    balance: 'Saldo atual',
+    initialBalance: 'Saldo de abertura',
+    institution: 'Instituição',
+    projected: 'Projetado',
+    projectedHint: 'Inclui lançamentos pendentes.',
+    limit: 'Limite',
+    closingDay: 'Fechamento',
+    dueDay: 'Vencimento',
+    archive: 'Arquivar',
+    unarchive: 'Desarquivar',
+    archived: 'Arquivada',
+    showArchived: 'Mostrar arquivadas',
+    delete: 'Excluir',
+    deleteConfirm: 'Excluir esta conta? Só é possível se ela não tiver lançamentos.',
+    empty: 'Nenhuma conta ainda.',
+    transactionCount: '{count} lançamentos',
+  },
+
+  categories: {
+    title: 'Categorias',
+    subtitle: 'Arraste para reordenar ou aninhar. Máximo de dois níveis.',
+    new: 'Nova categoria',
+    edit: 'Editar categoria',
+    name: 'Nome',
+    type: 'Tipo',
+    parent: 'Categoria principal',
+    noParent: 'Nenhuma (categoria principal)',
+    icon: 'Ícone',
+    color: 'Cor',
+    expenses: 'Despesas',
+    income: 'Receitas',
+    archive: 'Arquivar',
+    unarchive: 'Desarquivar',
+    delete: 'Excluir',
+    deleteTitle: 'Excluir categoria',
+    deleteWithTransactions:
+      'Esta categoria tem {count} lançamento(s). Escolha para onde eles vão.',
+    reassignTo: 'Mover lançamentos para',
+    empty: 'Nenhuma categoria ainda.',
+    systemBadge: 'Do sistema',
+    usageCount: '{count} lançamentos',
+    dragHandle: 'Arrastar',
+    saved: 'Ordem salva.',
+  },
+
+  transactions: {
+    title: 'Transações',
+    subtitle: 'Tudo que entrou e saiu.',
+    newIncome: 'Nova receita',
+    newExpense: 'Nova despesa',
+    newTransfer: 'Transferência',
+    editTitle: 'Editar lançamento',
+    description: 'Descrição',
+    amount: 'Valor',
+    date: 'Data',
+    account: 'Conta',
+    fromAccount: 'De',
+    toAccount: 'Para',
+    category: 'Categoria',
+    noCategory: 'Sem categoria',
+    status: 'Situação',
+    statuses: { SETTLED: 'Liquidado', PENDING: 'Pendente' },
+    notes: 'Observações',
+    filters: 'Filtros',
+    period: 'Período',
+    from: 'De',
+    to: 'Até',
+    search: 'Buscar',
+    searchPlaceholder: 'Descrição do lançamento',
+    allAccounts: 'Todas as contas',
+    allCategories: 'Todas as categorias',
+    allTypes: 'Todos os tipos',
+    clearFilters: 'Limpar filtros',
+    includeTransfers: 'Mostrar transferências',
+    income: 'Receitas',
+    expense: 'Despesas',
+    net: 'Saldo do período',
+    transferNote: 'Transferência não entra em receitas nem despesas.',
+    empty: 'Nenhum lançamento no período.',
+    loadMore: 'Carregar mais',
+    delete: 'Excluir',
+    deleteConfirm: 'Excluir este lançamento?',
+    deleteTransferConfirm: 'Isso apaga as duas pernas da transferência. Continuar?',
+    by: 'por {name}',
+    installment: '{current}/{total}',
+  },
+
+  attachments: {
+    title: 'Comprovantes',
+    add: 'Anexar',
+    empty: 'Nenhum comprovante ainda.',
+    hint: 'Imagem ou PDF, até 10 MB.',
+    uploading: 'Enviando... {percent}%',
+    delete: 'Excluir comprovante',
+    deleteConfirm: 'Excluir este comprovante? O arquivo é removido do servidor.',
+    invalidType: 'Envie uma imagem (JPEG, PNG, WebP, HEIC) ou um PDF.',
+    tooLarge: 'O arquivo pode ter no máximo 10 MB.',
+    saveFirst: 'Salve o lançamento para poder anexar comprovantes.',
+  },
+
+  dashboard: {
+    title: 'Dashboard',
+    placeholder: 'O dashboard chega na fase 13. Por enquanto, sua conta já está configurada.',
+  },
+
+  errors: {
+    INVALID_CREDENTIALS: 'E-mail ou senha incorretos.',
+    EMAIL_ALREADY_USED: 'Este e-mail já está em uso.',
+    RATE_LIMITED: 'Muitas tentativas. Espere um minuto e tente de novo.',
+    TOKEN_EXPIRED: 'Sua sessão expirou. Entre novamente.',
+    TOKEN_REUSED: 'Detectamos reuso de sessão. Por segurança, entre novamente.',
+    NOT_WORKSPACE_MEMBER: 'Você não tem acesso a este workspace.',
+    INSUFFICIENT_ROLE: 'Seu papel neste workspace não permite essa ação.',
+    ONBOARDING_REQUIRED: 'Conclua o onboarding antes de continuar.',
+    NETWORK: 'Não conseguimos falar com o servidor. Verifique sua conexão.',
+  },
+};
+
+/**
+ * Forma do dicionario, com os valores como `string`.
+ *
+ * Sem `as const` de proposito: com ele, cada valor viraria um tipo LITERAL e o
+ * en-US so compilaria se repetisse o texto em portugues. O que os idiomas
+ * precisam ter em comum e' a ESTRUTURA de chaves -- e essa continua checada:
+ * faltar uma chave nova no en-US quebra a compilacao.
+ */
+export type Dictionary = typeof ptBR;

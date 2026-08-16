@@ -1,0 +1,14 @@
+{
+  "extends": "@finapp/config/tsconfig/node.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "rootDir": ".",
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"],
+      "@test/*": ["test/*"]
+    }
+  },
+  "include": ["src/**/*.ts", "test/**/*.ts", "vitest.config.mts", "vitest.integration.config.mts"],
+  "exclude": ["node_modules", "dist", "prisma"]
+}

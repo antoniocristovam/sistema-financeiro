@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>finapp</title>
+
+    <!--
+      Tema aplicado ANTES do bundle carregar.
+
+      Se isso for para dentro do React, todo reload em modo escuro pisca branco
+      no intervalo entre a primeira pintura e a montagem do componente. Script
+      inline, sincrono, no head: e' a unica posicao que nao pisca.
+    -->
+    <script>
+      (function () {
+        try {
+          var stored = localStorage.getItem('finapp.theme');
+          var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+          var isDark = stored === 'DARK' || ((!stored || stored === 'SYSTEM') && prefersDark);
+          document.documentElement.classList.toggle('dark', isDark);
+          document.documentElement.style.colorScheme = isDark ? 'dark' : 'light';
+        } catch (_) {
+          /* localStorage bloqueado: cai no tema claro */
+        }
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
