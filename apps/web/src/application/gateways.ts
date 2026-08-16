@@ -9,7 +9,17 @@ import {
   type CreateCategoryBody,
   type CreateTransactionBody,
   type CreateTransferBody,
+  type Budget,
+  type BudgetList,
+  type CopyBudgetsBody,
+  type CreateBudgetBody,
+  type CreateContributionBody,
+  type CreateGoalBody,
   type CreateInstallmentPurchaseBody,
+  type GoalList,
+  type GoalWithContributions,
+  type UpdateBudgetBody,
+  type UpdateGoalBody,
   type CreateRecurrenceBody,
   type CreditCardList,
   type InstallmentPurchaseResult,
@@ -171,4 +181,26 @@ export interface CardGateway {
     workspaceId: string,
     body: CreateInstallmentPurchaseBody,
   ): Promise<InstallmentPurchaseResult>;
+}
+
+export interface BudgetGateway {
+  list(workspaceId: string, month?: string): Promise<BudgetList>;
+  create(workspaceId: string, body: CreateBudgetBody): Promise<Budget>;
+  update(workspaceId: string, id: string, body: UpdateBudgetBody): Promise<void>;
+  remove(workspaceId: string, id: string): Promise<void>;
+  copy(workspaceId: string, body: CopyBudgetsBody): Promise<{ copied: number }>;
+}
+
+export interface GoalGateway {
+  list(workspaceId: string, includeArchived?: boolean): Promise<GoalList>;
+  get(workspaceId: string, id: string): Promise<GoalWithContributions>;
+  create(workspaceId: string, body: CreateGoalBody): Promise<{ id: string }>;
+  update(workspaceId: string, id: string, body: UpdateGoalBody): Promise<void>;
+  remove(workspaceId: string, id: string): Promise<void>;
+  contribute(
+    workspaceId: string,
+    id: string,
+    body: CreateContributionBody,
+  ): Promise<{ achieved: boolean }>;
+  removeContribution(workspaceId: string, id: string, contributionId: string): Promise<void>;
 }

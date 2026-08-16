@@ -8,6 +8,7 @@ import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { validateEnv } from './config/env';
 import { InvoiceJobsModule } from './modules/account/infra/invoice-jobs.module';
 import { AttachmentModule } from './modules/attachment/infra/attachment.module';
+import { BudgetJobsModule } from './modules/budget/infra/budget-jobs.module';
 import { IdentityModule } from './modules/identity/infra/identity.module';
 import { LedgerModule } from './modules/ledger/infra/ledger.module';
 import { NotificationModule } from './modules/notification/infra/notification.module';
@@ -73,6 +74,7 @@ const ROOT_ENV_FILE = resolve(__dirname, '../../../.env');
     NotificationModule,
     RecurrenceJobsModule,
     InvoiceJobsModule,
+    BudgetJobsModule,
   ],
   controllers: [HealthController],
   providers: [

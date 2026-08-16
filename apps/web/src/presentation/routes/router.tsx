@@ -14,7 +14,9 @@ import { SignInPage } from './auth/sign-in';
 import { SignUpPage } from './auth/sign-up';
 import { AppShell } from '../components/app-shell';
 import { AccountsPage } from './accounts/accounts-page';
+import { BudgetsPage } from './budgets/budgets-page';
 import { CardsPage } from './cards/cards-page';
+import { GoalsPage } from './goals/goals-page';
 import { CategoriesPage } from './categories/categories-page';
 import { DashboardPage } from './dashboard-placeholder';
 import { OnboardingPage } from './onboarding/onboarding-page';
@@ -179,6 +181,18 @@ const recurrencesRoute = createRoute({
   component: withShell(RecurrencesPage),
 });
 
+const budgetsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/orcamentos',
+  component: withShell(BudgetsPage),
+});
+
+const goalsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/metas',
+  component: withShell(GoalsPage),
+});
+
 const routeTree = rootRoute.addChildren([
   indexRoute,
   signInRoute,
@@ -193,6 +207,8 @@ const routeTree = rootRoute.addChildren([
   categoriesRoute,
   recurrencesRoute,
   cardsRoute,
+  budgetsRoute,
+  goalsRoute,
 ]);
 
 export const router = createRouter({ routeTree });

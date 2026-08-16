@@ -53,6 +53,8 @@ export const envSchema = z.object({
   /** Fatura fecha de madrugada, antes de o dia comecar a gerar compras novas. */
   INVOICE_CLOSING_CRON: z.string().default('15 2 * * *'),
   INVOICE_REMINDER_CRON: z.string().default('0 8 * * *'),
+  /** Tres vezes ao dia: "uma vez por limiar" ja e' a garantia, isso e' latencia. */
+  BUDGET_ALERT_CRON: z.string().default('0 9,15,21 * * *'),
   /*
    * Desliga o worker no processo atual.
    *

@@ -67,15 +67,29 @@ export class BudgetProgress {
     return Math.floor((this.consumed.toCents() * 10_000) / limit);
   }
 
+  /**
+   * Percentual INTEIRO, truncado.
+   *
+   * `basisPoints / 100` devolveria 79,99 -- um numero que a tela mostraria como
+   * "79,99%" e que quebra o contrato, que promete inteiro. O truncamento aqui e'
+   * o mesmo dos pontos-base: 79,99% e' 79%, e nao dispara o alerta de 80%.
+   */
   get percent(): number {
-    return this.basisPoints / 100;
+    return Math.floor(this.basisPoints / 100);
   }
 
+  /**
+   * A faixa e decidida em PONTOS-BASE, nao no percentual truncado.
+   *
+   * Com o percentual, 99,99% viraria 99 -- correto -- mas a comparacao perderia
+   * a precisao que os pontos-base ja tem. Comparar na unidade mais fina mantem
+   * a fronteira exatamente onde ela esta.
+   */
   get band(): BudgetBand {
-    const percent = this.percent;
+    const basisPoints = this.basisPoints;
 
-    if (percent >= 100) return 'OVER';
-    if (percent >= 80) return 'NEAR';
+    if (basisPoints >= 10_000) return 'OVER';
+    if (basisPoints >= 8_000) return 'NEAR';
     return 'OK';
   }
 
@@ -99,10 +113,10 @@ export class BudgetProgress {
    */
   thresholdsToNotify(alreadyNotified: readonly number[] = []): BudgetThreshold[] {
     const notified = new Set(alreadyNotified);
-    const percent = this.percent;
+    const basisPoints = this.basisPoints;
 
     return BUDGET_ALERT_THRESHOLDS.filter(
-      (threshold) => percent >= threshold && !notified.has(threshold),
+      (threshold) => basisPoints >= threshold * 100 && !notified.has(threshold),
     );
   }
 }

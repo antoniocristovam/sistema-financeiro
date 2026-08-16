@@ -4,8 +4,10 @@ import {
   type AccountGateway,
   type AttachmentGateway,
   type AuthGateway,
+  type BudgetGateway,
   type CardGateway,
   type CategoryGateway,
+  type GoalGateway,
   type NotificationGateway,
   type OnboardingGateway,
   type RecurrenceGateway,
@@ -25,6 +27,10 @@ import {
 import { HttpAttachmentGateway } from '../../infra/gateways/attachment-gateway';
 import { HttpCardGateway } from '../../infra/gateways/card-gateway';
 import {
+  HttpBudgetGateway,
+  HttpGoalGateway,
+} from '../../infra/gateways/planning-gateways';
+import {
   HttpNotificationGateway,
   HttpRecurrenceGateway,
 } from '../../infra/gateways/recurrence-gateways';
@@ -42,6 +48,8 @@ export interface Dependencies {
   recurrences: RecurrenceGateway;
   notifications: NotificationGateway;
   cards: CardGateway;
+  budgets: BudgetGateway;
+  goals: GoalGateway;
 }
 
 const DependenciesContext = createContext<Dependencies | null>(null);
@@ -79,6 +87,8 @@ export function DependenciesProvider({
       recurrences: new HttpRecurrenceGateway(http),
       notifications: new HttpNotificationGateway(http),
       cards: new HttpCardGateway(http),
+      budgets: new HttpBudgetGateway(http),
+      goals: new HttpGoalGateway(http),
     };
   }, [value]);
 

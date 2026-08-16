@@ -81,8 +81,37 @@ import {
   type WorkspaceRepository,
 } from '../../workspace/core/domain/repositories/workspace-repository';
 import { PrismaWorkspaceRepository } from '../../workspace/infra/prisma/repositories/prisma-workspace-repository';
+import {
+  CopyBudgetsUseCase,
+  CreateBudgetUseCase,
+  DeleteBudgetUseCase,
+  ListBudgetsUseCase,
+  UpdateBudgetUseCase,
+} from '../../budget/core/application/use-cases/manage-budgets';
+import {
+  BUDGET_REPOSITORY,
+  type BudgetRepository,
+} from '../../budget/core/domain/repositories/budget-repository';
+import { PrismaBudgetRepository } from '../../budget/infra/prisma/prisma-budget-repository';
+import {
+  ContributeToGoalUseCase,
+  CreateGoalUseCase,
+  DeleteGoalUseCase,
+  GetGoalUseCase,
+  ListGoalsUseCase,
+  RemoveContributionUseCase,
+  UpdateGoalUseCase,
+} from '../../goal/core/application/use-cases/manage-goals';
+import {
+  GOAL_REPOSITORY,
+  type GoalRepository,
+} from '../../goal/core/domain/repositories/goal-repository';
+import { PrismaGoalRepository } from '../../goal/infra/prisma/prisma-goal-repository';
+import { NOTIFIER, type Notifier } from '../../../shared/application/ports/notifier';
+import { NotificationModule } from '../../notification/infra/notification.module';
 import { AccountsController } from './http/accounts.controller';
 import { CardsController } from './http/cards.controller';
+import { PlanningController } from './http/planning.controller';
 import { CategoriesController } from './http/categories.controller';
 import { RecurrencesController } from './http/recurrences.controller';
 import { TransactionsController } from './http/transactions.controller';
@@ -98,13 +127,14 @@ import { TransactionsController } from './http/transactions.controller';
  * Casos de uso continuam classes puras, montadas por `useFactory`.
  */
 @Module({
-  imports: [AttachmentModule],
+  imports: [AttachmentModule, NotificationModule],
   controllers: [
     AccountsController,
     CategoriesController,
     TransactionsController,
     RecurrencesController,
     CardsController,
+    PlanningController,
   ],
   providers: [
     { provide: ACCOUNT_REPOSITORY, useClass: PrismaAccountRepository },
@@ -113,6 +143,8 @@ import { TransactionsController } from './http/transactions.controller';
     { provide: RECURRENCE_REPOSITORY, useClass: PrismaRecurrenceRepository },
     { provide: INVOICE_REPOSITORY, useClass: PrismaInvoiceRepository },
     { provide: INVOICE_ROUTER, useClass: BillingCycleInvoiceRouter },
+    { provide: BUDGET_REPOSITORY, useClass: PrismaBudgetRepository },
+    { provide: GOAL_REPOSITORY, useClass: PrismaGoalRepository },
     { provide: WORKSPACE_REPOSITORY, useClass: PrismaWorkspaceRepository },
 
     {
@@ -440,6 +472,119 @@ import { TransactionsController } from './http/transactions.controller';
         TRANSACTION_REPOSITORY,
         UNIT_OF_WORK,
       ],
+    },
+
+    // -- Orcamentos -----------------------------------------------------------
+    {
+      provide: ListBudgetsUseCase,
+      useFactory: (access: WorkspaceAccessService, budgets: BudgetRepository, clock: Clock) =>
+        new ListBudgetsUseCase(access, budgets, clock),
+      inject: [WorkspaceAccessService, BUDGET_REPOSITORY, CLOCK],
+    },
+    {
+      provide: CreateBudgetUseCase,
+      useFactory: (
+        access: WorkspaceAccessService,
+        budgets: BudgetRepository,
+        categories: CategoryRepository,
+      ) => new CreateBudgetUseCase(access, budgets, categories),
+      inject: [WorkspaceAccessService, BUDGET_REPOSITORY, CATEGORY_REPOSITORY],
+    },
+    {
+      provide: UpdateBudgetUseCase,
+      useFactory: (access: WorkspaceAccessService, budgets: BudgetRepository) =>
+        new UpdateBudgetUseCase(access, budgets),
+      inject: [WorkspaceAccessService, BUDGET_REPOSITORY],
+    },
+    {
+      provide: DeleteBudgetUseCase,
+      useFactory: (access: WorkspaceAccessService, budgets: BudgetRepository) =>
+        new DeleteBudgetUseCase(access, budgets),
+      inject: [WorkspaceAccessService, BUDGET_REPOSITORY],
+    },
+    {
+      provide: CopyBudgetsUseCase,
+      useFactory: (access: WorkspaceAccessService, budgets: BudgetRepository) =>
+        new CopyBudgetsUseCase(access, budgets),
+      inject: [WorkspaceAccessService, BUDGET_REPOSITORY],
+    },
+
+    // -- Metas ----------------------------------------------------------------
+    {
+      provide: ListGoalsUseCase,
+      useFactory: (access: WorkspaceAccessService, goals: GoalRepository, clock: Clock) =>
+        new ListGoalsUseCase(access, goals, clock),
+      inject: [WorkspaceAccessService, GOAL_REPOSITORY, CLOCK],
+    },
+    {
+      provide: GetGoalUseCase,
+      useFactory: (access: WorkspaceAccessService, goals: GoalRepository, clock: Clock) =>
+        new GetGoalUseCase(access, goals, clock),
+      inject: [WorkspaceAccessService, GOAL_REPOSITORY, CLOCK],
+    },
+    {
+      provide: CreateGoalUseCase,
+      useFactory: (
+        access: WorkspaceAccessService,
+        goals: GoalRepository,
+        accounts: AccountRepository,
+      ) => new CreateGoalUseCase(access, goals, accounts),
+      inject: [WorkspaceAccessService, GOAL_REPOSITORY, ACCOUNT_REPOSITORY],
+    },
+    {
+      provide: UpdateGoalUseCase,
+      useFactory: (access: WorkspaceAccessService, goals: GoalRepository, clock: Clock) =>
+        new UpdateGoalUseCase(access, goals, clock),
+      inject: [WorkspaceAccessService, GOAL_REPOSITORY, CLOCK],
+    },
+    {
+      provide: DeleteGoalUseCase,
+      useFactory: (access: WorkspaceAccessService, goals: GoalRepository) =>
+        new DeleteGoalUseCase(access, goals),
+      inject: [WorkspaceAccessService, GOAL_REPOSITORY],
+    },
+    {
+      provide: ContributeToGoalUseCase,
+      useFactory: (
+        access: WorkspaceAccessService,
+        goals: GoalRepository,
+        accounts: AccountRepository,
+        transactions: TransactionRepository,
+        workspaces: WorkspaceRepository,
+        notifier: Notifier,
+        unitOfWork: UnitOfWork,
+        clock: Clock,
+      ) =>
+        new ContributeToGoalUseCase(
+          access,
+          goals,
+          accounts,
+          transactions,
+          workspaces,
+          notifier,
+          unitOfWork,
+          clock,
+        ),
+      inject: [
+        WorkspaceAccessService,
+        GOAL_REPOSITORY,
+        ACCOUNT_REPOSITORY,
+        TRANSACTION_REPOSITORY,
+        WORKSPACE_REPOSITORY,
+        NOTIFIER,
+        UNIT_OF_WORK,
+        CLOCK,
+      ],
+    },
+    {
+      provide: RemoveContributionUseCase,
+      useFactory: (
+        access: WorkspaceAccessService,
+        goals: GoalRepository,
+        transactions: TransactionRepository,
+        unitOfWork: UnitOfWork,
+      ) => new RemoveContributionUseCase(access, goals, transactions, unitOfWork),
+      inject: [WorkspaceAccessService, GOAL_REPOSITORY, TRANSACTION_REPOSITORY, UNIT_OF_WORK],
     },
 
     {

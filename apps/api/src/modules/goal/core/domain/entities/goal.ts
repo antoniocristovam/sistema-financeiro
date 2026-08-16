@@ -94,6 +94,10 @@ export class Goal extends Entity<GoalProps> {
     return this.props.archivedAt;
   }
 
+  get createdAt(): Date {
+    return this.props.createdAt;
+  }
+
   isAchieved(): boolean {
     return this.props.achievedAt !== null;
   }
@@ -131,6 +135,28 @@ export class Goal extends Entity<GoalProps> {
       this.props.achievedAt = null;
       this.touch();
     }
+  }
+
+  rename(name: string): void {
+    this.props.name = name;
+    this.touch();
+  }
+
+  restyle(style: { icon?: string | null; color?: string | null }): void {
+    if (style.icon !== undefined) {
+      this.props.icon = style.icon;
+    }
+
+    if (style.color !== undefined) {
+      this.props.color = style.color;
+    }
+
+    this.touch();
+  }
+
+  unarchive(): void {
+    this.props.archivedAt = null;
+    this.touch();
   }
 
   changeTarget(targetAmount: Money): void {

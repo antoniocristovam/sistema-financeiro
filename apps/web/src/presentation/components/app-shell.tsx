@@ -10,6 +10,8 @@ import {
   CalendarClock,
   LayoutDashboard,
   Menu,
+  PiggyBank,
+  Target,
   Receipt,
   Tags,
   Wallet,
@@ -37,6 +39,8 @@ const NAV: NavItem[] = [
   { to: '/categorias', label: 'nav.categories', icon: Tags },
   { to: '/recorrencias', label: 'nav.recurrences', icon: CalendarClock },
   { to: '/cartoes', label: 'nav.cards', icon: CreditCard },
+  { to: '/orcamentos', label: 'nav.budgets', icon: PiggyBank },
+  { to: '/metas', label: 'nav.goals', icon: Target },
 ];
 
 /** Ainda nao existem: aparecem desabilitados para dar o mapa do produto. */
