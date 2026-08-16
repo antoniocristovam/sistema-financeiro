@@ -32,7 +32,7 @@ export class NodemailerMailService implements MailService, OnModuleDestroy {
     });
   }
 
-  async send(input: SendMailInput): Promise<void> {
+  async send(input: SendMailInput): Promise<boolean> {
     try {
       await this.transporter.sendMail({
         from: this.from,
@@ -41,11 +41,15 @@ export class NodemailerMailService implements MailService, OnModuleDestroy {
         html: input.html,
         text: input.text,
       });
+
+      return true;
     } catch (error) {
       this.logger.error(
         `Falha ao enviar e-mail para ${input.to} ("${input.subject}")`,
         error instanceof Error ? error.stack : String(error),
       );
+
+      return false;
     }
   }
 

@@ -9,11 +9,14 @@ import { validateEnv } from './config/env';
 import { AttachmentModule } from './modules/attachment/infra/attachment.module';
 import { IdentityModule } from './modules/identity/infra/identity.module';
 import { LedgerModule } from './modules/ledger/infra/ledger.module';
+import { NotificationModule } from './modules/notification/infra/notification.module';
 import { OnboardingModule } from './modules/onboarding/infra/onboarding.module';
+import { RecurrenceJobsModule } from './modules/transaction/infra/recurrence-jobs.module';
 import { WorkspaceModule } from './modules/workspace/infra/workspace.module';
 import { DomainExceptionFilter } from './shared/filters/domain-exception.filter';
 import { JwtAuthGuard } from './shared/guards/jwt-auth.guard';
 import { HealthController } from './shared/http/health.controller';
+import { QueueModule } from './shared/queue/queue.module';
 import { SharedModule } from './shared/shared.module';
 
 /**
@@ -60,11 +63,14 @@ const ROOT_ENV_FILE = resolve(__dirname, '../../../.env');
         process.env.NODE_ENV === 'test' && process.env.THROTTLE_DISABLED === 'true',
     }),
     SharedModule,
+    QueueModule,
     IdentityModule,
     WorkspaceModule,
     OnboardingModule,
     LedgerModule,
     AttachmentModule,
+    NotificationModule,
+    RecurrenceJobsModule,
   ],
   controllers: [HealthController],
   providers: [

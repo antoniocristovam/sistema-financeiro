@@ -65,6 +65,35 @@ export class CalendarDate extends ValueObject<CalendarDateProps> {
   }
 
   /**
+   * O dia de calendario de um instante em um fuso especifico.
+   *
+   * O job diario precisa disto. `fromUtcDate` responde "que dia e' em UTC", que
+   * nao e' a pergunta: uma execucao as 22h de Sao Paulo acontece as 01h UTC do
+   * dia SEGUINTE, e a janela de materializacao sairia deslocada em um dia --
+   * junto com o lembrete, que avisaria com um dia a menos de antecedencia.
+   *
+   * O armazenamento continua todo em UTC. E' so a leitura de "hoje" que precisa
+   * saber onde o usuario esta.
+   */
+  static todayIn(instant: Date, timeZone: string): CalendarDate {
+    const parts = new Intl.DateTimeFormat('en-CA', {
+      timeZone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).formatToParts(instant);
+
+    const read = (type: string): number =>
+      Number(parts.find((part) => part.type === type)?.value ?? '0');
+
+    return new CalendarDate({
+      year: read('year'),
+      month: read('month'),
+      day: read('day'),
+    });
+  }
+
+  /**
    * Igual a `fromParts`, mas AJUSTA o dia para o ultimo do mes em vez de
    * falhar. E' o que a recorrencia mensal precisa: "todo dia 31" em fevereiro
    * significa dia 28 (ou 29), nao "pula o mes".

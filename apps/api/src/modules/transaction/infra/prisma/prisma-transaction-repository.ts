@@ -202,6 +202,24 @@ export class PrismaTransactionRepository implements TransactionRepository {
     await this.tx.client.transaction.create({ data: TransactionMapper.toPrisma(transaction) });
   }
 
+  /**
+   * `createMany` com `skipDuplicates` em vez de `create` dentro de um try.
+   *
+   * O resultado e' o mesmo -- quem decide e' o indice unico
+   * `(recurrenceId, occurrenceDate)` -- mas sem levantar excecao. Com `create`,
+   * cada ocorrencia ja materializada imprimia um `prisma:error` no log do
+   * servidor, e quem lesse aquilo procuraria um defeito no caminho que estava
+   * funcionando exatamente como projetado.
+   */
+  async createIfAbsent(transaction: Transaction): Promise<boolean> {
+    const result = await this.tx.client.transaction.createMany({
+      data: [TransactionMapper.toPrisma(transaction)],
+      skipDuplicates: true,
+    });
+
+    return result.count === 1;
+  }
+
   async createMany(transactions: Transaction[]): Promise<void> {
     await this.tx.client.transaction.createMany({
       data: transactions.map(TransactionMapper.toPrisma),

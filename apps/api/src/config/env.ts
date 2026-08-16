@@ -39,6 +39,25 @@ export const envSchema = z.object({
   COOKIE_DOMAIN: z.string().default('localhost'),
 
   REDIS_URL: z.string().url(),
+  /*
+   * Fuso da aplicacao.
+   *
+   * Nao muda nada no armazenamento -- tudo continua em UTC. Ele decide o que e'
+   * "hoje" para os jobs diarios e a que hora o cron dispara: as 03:00 do
+   * servidor podem ser as 00:00 ou as 06:00 do usuario.
+   */
+  APP_TIMEZONE: z.string().default('America/Sao_Paulo'),
+  /** Materializacao de madrugada; o lembrete logo depois, ja com o que ela criou. */
+  RECURRENCE_CRON: z.string().default('0 3 * * *'),
+  REMINDER_CRON: z.string().default('30 7 * * *'),
+  /*
+   * Desliga o worker no processo atual.
+   *
+   * Os testes de integracao sobem a app inteira: com o worker ligado, o job
+   * diario processaria dados do teste no meio da suite. Tambem serve para
+   * escalar a API sem multiplicar workers.
+   */
+  QUEUE_WORKER_ENABLED: booleanFromEnv(true),
 
   MINIO_ENDPOINT: z.string().default('localhost'),
   MINIO_PORT: z.coerce.number().int().positive().default(9000),
@@ -50,7 +69,16 @@ export const envSchema = z.object({
   MINIO_BUCKET_IMPORTS: z.string().default('finapp-imports'),
   EXPORT_URL_TTL_SECONDS: z.coerce.number().int().positive().default(86_400),
 
-  SMTP_HOST: z.string().default('localhost'),
+  /*
+   * O padrao e' o IP, nao "localhost".
+   *
+   * O nodemailer resolve o host por consulta DNS (`dns.resolve`), e nao pelo
+   * arquivo hosts (`dns.lookup`). "localhost" nao existe em DNS: a consulta sai
+   * para o resolvedor da rede e trava ate estourar o tempo. O sintoma e' cruel
+   * -- o e-mail nao chega, o job demora 28 segundos por destinatario, e o erro
+   * so aparece como ETIMEOUT sem dizer que a culpa e' do nome.
+   */
+  SMTP_HOST: z.string().default('127.0.0.1'),
   SMTP_PORT: z.coerce.number().int().positive().default(1025),
   SMTP_SECURE: booleanFromEnv(false),
   SMTP_USER: z.string().optional(),

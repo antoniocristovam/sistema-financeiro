@@ -7,6 +7,7 @@ import {
   Check,
   ChevronDown,
   CreditCard,
+  CalendarClock,
   LayoutDashboard,
   Menu,
   Receipt,
@@ -16,6 +17,7 @@ import {
 } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 
+import { NotificationBell } from './notification-bell';
 import { useDependencies } from '../providers/dependencies';
 import { useTranslation, type TranslationKey } from '../providers/locale-provider';
 import { useSession } from '../providers/session-provider';
@@ -33,6 +35,7 @@ const NAV: NavItem[] = [
   { to: '/transacoes', label: 'nav.transactions', icon: Receipt },
   { to: '/contas', label: 'nav.accounts', icon: Wallet },
   { to: '/categorias', label: 'nav.categories', icon: Tags },
+  { to: '/recorrencias', label: 'nav.recurrences', icon: CalendarClock },
 ];
 
 /** Ainda nao existem: aparecem desabilitados para dar o mapa do produto. */
@@ -69,6 +72,10 @@ export function AppShell({ children }: { children: ReactNode }) {
         <span className="text-sm font-semibold tracking-wide text-brand uppercase">
           {t('common.appName')}
         </span>
+
+        <div className="ml-auto">
+          <NotificationBell />
+        </div>
       </header>
 
       <div className="flex">
@@ -102,9 +109,12 @@ export function AppShell({ children }: { children: ReactNode }) {
         )}
 
         <aside className="hidden w-64 shrink-0 border-r border-border-subtle bg-surface p-4 lg:block">
-          <p className="mb-4 px-2 text-sm font-semibold tracking-wide text-brand uppercase">
-            {t('common.appName')}
-          </p>
+          <div className="mb-4 flex items-center justify-between px-2">
+            <p className="text-sm font-semibold tracking-wide text-brand uppercase">
+              {t('common.appName')}
+            </p>
+            <NotificationBell />
+          </div>
           <SidebarContent />
         </aside>
 

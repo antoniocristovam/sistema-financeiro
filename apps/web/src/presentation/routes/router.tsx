@@ -17,6 +17,7 @@ import { AccountsPage } from './accounts/accounts-page';
 import { CategoriesPage } from './categories/categories-page';
 import { DashboardPage } from './dashboard-placeholder';
 import { OnboardingPage } from './onboarding/onboarding-page';
+import { RecurrencesPage } from './recurrences/recurrences-page';
 import { TransactionsPage } from './transactions/transactions-page';
 
 /** Rotas que nao exigem sessao. */
@@ -165,6 +166,12 @@ const categoriesRoute = createRoute({
   component: withShell(CategoriesPage),
 });
 
+const recurrencesRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/recorrencias',
+  component: withShell(RecurrencesPage),
+});
+
 const routeTree = rootRoute.addChildren([
   indexRoute,
   signInRoute,
@@ -177,6 +184,7 @@ const routeTree = rootRoute.addChildren([
   transactionsRoute,
   accountsRoute,
   categoriesRoute,
+  recurrencesRoute,
 ]);
 
 export const router = createRouter({ routeTree });

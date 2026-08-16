@@ -34,6 +34,19 @@ import {
   type AttachmentCleaner,
 } from '../../transaction/core/application/ports/attachment-cleaner';
 import {
+  CreateRecurrenceUseCase,
+  DeleteRecurrenceUseCase,
+  ListRecurrenceOccurrencesUseCase,
+  ListRecurrencesUseCase,
+  SkipOccurrenceUseCase,
+  UpdateRecurrenceUseCase,
+} from '../../transaction/core/application/use-cases/manage-recurrences';
+import {
+  RECURRENCE_REPOSITORY,
+  type RecurrenceRepository,
+} from '../../transaction/core/domain/repositories/recurrence-repository';
+import { PrismaRecurrenceRepository } from '../../transaction/infra/prisma/prisma-recurrence-repository';
+import {
   CreateTransactionUseCase,
   CreateTransferUseCase,
   DeleteTransactionUseCase,
@@ -53,6 +66,7 @@ import {
 import { PrismaWorkspaceRepository } from '../../workspace/infra/prisma/repositories/prisma-workspace-repository';
 import { AccountsController } from './http/accounts.controller';
 import { CategoriesController } from './http/categories.controller';
+import { RecurrencesController } from './http/recurrences.controller';
 import { TransactionsController } from './http/transactions.controller';
 
 /**
@@ -67,11 +81,17 @@ import { TransactionsController } from './http/transactions.controller';
  */
 @Module({
   imports: [AttachmentModule],
-  controllers: [AccountsController, CategoriesController, TransactionsController],
+  controllers: [
+    AccountsController,
+    CategoriesController,
+    TransactionsController,
+    RecurrencesController,
+  ],
   providers: [
     { provide: ACCOUNT_REPOSITORY, useClass: PrismaAccountRepository },
     { provide: CATEGORY_REPOSITORY, useClass: PrismaCategoryRepository },
     { provide: TRANSACTION_REPOSITORY, useClass: PrismaTransactionRepository },
+    { provide: RECURRENCE_REPOSITORY, useClass: PrismaRecurrenceRepository },
     { provide: WORKSPACE_REPOSITORY, useClass: PrismaWorkspaceRepository },
 
     {
@@ -251,6 +271,75 @@ import { TransactionsController } from './http/transactions.controller';
         UNIT_OF_WORK,
         ATTACHMENT_CLEANER,
       ],
+    },
+
+    // -- Contas fixas ---------------------------------------------------------
+    {
+      provide: ListRecurrencesUseCase,
+      useFactory: (
+        access: WorkspaceAccessService,
+        recurrences: RecurrenceRepository,
+        clock: Clock,
+      ) => new ListRecurrencesUseCase(access, recurrences, clock),
+      inject: [WorkspaceAccessService, RECURRENCE_REPOSITORY, CLOCK],
+    },
+    {
+      provide: CreateRecurrenceUseCase,
+      useFactory: (
+        access: WorkspaceAccessService,
+        recurrences: RecurrenceRepository,
+        accounts: AccountRepository,
+        categories: CategoryRepository,
+        clock: Clock,
+      ) => new CreateRecurrenceUseCase(access, recurrences, accounts, categories, clock),
+      inject: [
+        WorkspaceAccessService,
+        RECURRENCE_REPOSITORY,
+        ACCOUNT_REPOSITORY,
+        CATEGORY_REPOSITORY,
+        CLOCK,
+      ],
+    },
+    {
+      provide: UpdateRecurrenceUseCase,
+      useFactory: (
+        access: WorkspaceAccessService,
+        recurrences: RecurrenceRepository,
+        accounts: AccountRepository,
+        categories: CategoryRepository,
+        clock: Clock,
+      ) => new UpdateRecurrenceUseCase(access, recurrences, accounts, categories, clock),
+      inject: [
+        WorkspaceAccessService,
+        RECURRENCE_REPOSITORY,
+        ACCOUNT_REPOSITORY,
+        CATEGORY_REPOSITORY,
+        CLOCK,
+      ],
+    },
+    {
+      provide: DeleteRecurrenceUseCase,
+      useFactory: (
+        access: WorkspaceAccessService,
+        recurrences: RecurrenceRepository,
+        audit: AuditLogger,
+      ) => new DeleteRecurrenceUseCase(access, recurrences, audit),
+      inject: [WorkspaceAccessService, RECURRENCE_REPOSITORY, AUDIT_LOGGER],
+    },
+    {
+      provide: ListRecurrenceOccurrencesUseCase,
+      useFactory: (
+        access: WorkspaceAccessService,
+        recurrences: RecurrenceRepository,
+        clock: Clock,
+      ) => new ListRecurrenceOccurrencesUseCase(access, recurrences, clock),
+      inject: [WorkspaceAccessService, RECURRENCE_REPOSITORY, CLOCK],
+    },
+    {
+      provide: SkipOccurrenceUseCase,
+      useFactory: (access: WorkspaceAccessService, recurrences: RecurrenceRepository) =>
+        new SkipOccurrenceUseCase(access, recurrences),
+      inject: [WorkspaceAccessService, RECURRENCE_REPOSITORY],
     },
   ],
 })

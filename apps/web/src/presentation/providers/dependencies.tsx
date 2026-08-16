@@ -5,7 +5,9 @@ import {
   type AttachmentGateway,
   type AuthGateway,
   type CategoryGateway,
+  type NotificationGateway,
   type OnboardingGateway,
+  type RecurrenceGateway,
   type TransactionGateway,
   type WorkspaceGateway,
 } from '../../application/gateways';
@@ -20,6 +22,10 @@ import {
   HttpTransactionGateway,
 } from '../../infra/gateways/ledger-gateways';
 import { HttpAttachmentGateway } from '../../infra/gateways/attachment-gateway';
+import {
+  HttpNotificationGateway,
+  HttpRecurrenceGateway,
+} from '../../infra/gateways/recurrence-gateways';
 import { HttpClient } from '../../infra/http/http-client';
 
 export interface Dependencies {
@@ -31,6 +37,8 @@ export interface Dependencies {
   categories: CategoryGateway;
   transactions: TransactionGateway;
   attachments: AttachmentGateway;
+  recurrences: RecurrenceGateway;
+  notifications: NotificationGateway;
 }
 
 const DependenciesContext = createContext<Dependencies | null>(null);
@@ -65,6 +73,8 @@ export function DependenciesProvider({
       categories: new HttpCategoryGateway(http),
       transactions: new HttpTransactionGateway(http),
       attachments: new HttpAttachmentGateway(http),
+      recurrences: new HttpRecurrenceGateway(http),
+      notifications: new HttpNotificationGateway(http),
     };
   }, [value]);
 

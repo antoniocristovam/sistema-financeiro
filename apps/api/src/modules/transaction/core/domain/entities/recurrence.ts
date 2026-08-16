@@ -19,6 +19,8 @@ export interface RecurrenceTemplate {
 
 export interface RecurrenceProps {
   workspaceId: UniqueEntityId;
+  /** Quem cadastrou a serie. Os lancamentos gerados pelo job herdam este autor. */
+  createdByUserId: UniqueEntityId;
   name: string;
   template: RecurrenceTemplate;
   schedule: RecurrenceSchedule;
@@ -75,6 +77,10 @@ export class Recurrence extends Entity<RecurrenceProps> {
     return this.props.workspaceId;
   }
 
+  get createdByUserId(): UniqueEntityId {
+    return this.props.createdByUserId;
+  }
+
   get name(): string {
     return this.props.name;
   }
@@ -99,11 +105,25 @@ export class Recurrence extends Entity<RecurrenceProps> {
     return this.props.isActive;
   }
 
+  get createdAt(): Date {
+    return this.props.createdAt;
+  }
+
   /**
    * Ocorrencias que ainda faltam materializar, dentro da janela de 60 dias.
    *
    * `skipped` sao as que o usuario dispensou: pular uma ocorrencia nao quebra a
    * serie, e o job nao pode recriar o que ja foi dispensado.
+   *
+   * Serie NOVA comeca a valer de hoje, nunca do `startDate` retroativo.
+   * Cadastrar em marco um aluguel "desde janeiro" nao pode despejar duas contas
+   * vencidas no extrato: elas ja foram pagas e provavelmente ja foram lancadas
+   * a mao, e como nascem PENDING elas ainda estragariam o saldo projetado.
+   *
+   * A recuperacao de atraso continua funcionando porque depende de outra coisa:
+   * com `materializedUntil` preenchido, a serie retoma exatamente de onde
+   * parou -- se o job ficou uma semana fora do ar, as ocorrencias daquela
+   * semana entram na proxima execucao.
    */
   pendingOccurrences(
     today: CalendarDate,
@@ -114,7 +134,10 @@ export class Recurrence extends Entity<RecurrenceProps> {
     }
 
     const horizon = today.addDays(Recurrence.MATERIALIZATION_WINDOW_DAYS);
-    const from = this.props.materializedUntil?.addDays(1) ?? this.props.schedule.startDate;
+    const startDate = this.props.schedule.startDate;
+    const from =
+      this.props.materializedUntil?.addDays(1) ??
+      (startDate.isAfter(today) ? startDate : today);
     const skippedKeys = new Set(skipped.map((date) => date.toString()));
 
     return this.props.schedule
@@ -170,6 +193,17 @@ export class Recurrence extends Entity<RecurrenceProps> {
 
   markMaterializedUntil(date: CalendarDate): void {
     this.props.materializedUntil = date;
+    this.touch();
+  }
+
+  rename(name: string): void {
+    this.props.name = name;
+    this.touch();
+  }
+
+  /** `null` desliga o lembrete. */
+  changeReminder(daysBefore: number | null): void {
+    this.props.reminderDaysBefore = daysBefore;
     this.touch();
   }
 

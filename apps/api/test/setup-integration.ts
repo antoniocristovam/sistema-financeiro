@@ -26,6 +26,16 @@ if (!databaseUrl) {
 process.env.DATABASE_URL = databaseUrl;
 process.env.NODE_ENV = 'test';
 
+/*
+ * Sem worker de fila na suite.
+ *
+ * O teste sobe a aplicacao REAL, e com o worker ligado o job diario poderia
+ * disparar no meio de um teste -- criando lancamentos que ninguem pediu, num
+ * banco que outro teste esta prestes a truncar. As rotinas dos jobs sao
+ * chamadas explicitamente pelos testes, que e' onde elas devem ser observadas.
+ */
+process.env.QUEUE_WORKER_ENABLED = 'false';
+
 const prisma = new PrismaClient({ datasources: { db: { url: databaseUrl } } });
 
 beforeEach(async () => {

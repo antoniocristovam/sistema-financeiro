@@ -375,9 +375,19 @@ export class FakeClock implements Clock {
 
 export class FakeMailService implements MailService {
   readonly sent: SendMailInput[] = [];
+  /** Simula SMTP recusando o proximo envio, sem levantar excecao. */
+  failNext = false;
 
-  async send(input: SendMailInput): Promise<void> {
+  async send(input: SendMailInput): Promise<boolean> {
+    if (this.failNext) {
+      this.failNext = false;
+
+      return false;
+    }
+
     this.sent.push(input);
+
+    return true;
   }
 
   lastTo(email: string): SendMailInput | undefined {

@@ -205,6 +205,7 @@ enum AuditAction {
   ACCOUNT_DELETED
   CATEGORY_DELETED
   TRANSACTION_DELETED
+  RECURRENCE_DELETED
   IMPORT_COMMITTED
   IMPORT_REVERTED
 }
@@ -241,6 +242,7 @@ model User {
   notifications       Notification[]
   sentInvitations     Invitation[]       @relation("InvitationInvitedBy")
   createdTransactions Transaction[]      @relation("TransactionCreatedBy")
+  createdRecurrences  Recurrence[]       @relation("RecurrenceCreatedBy")
   uploadedAttachments Attachment[]       @relation("AttachmentUploadedBy")
   goalContributions   GoalContribution[] @relation("GoalContributionCreatedBy")
   expenseSplits       ExpenseSplit[]     @relation("ExpenseSplitParticipant")
@@ -648,6 +650,10 @@ model InstallmentGroup {
 model Recurrence {
   id                 String              @id @default(uuid()) @db.Uuid
   workspaceId        String              @db.Uuid
+  /// Quem cadastrou a serie. Os lancamentos gerados pelo job herdam este autor:
+  /// no workspace compartilhado, "quem lancou isso" precisa ter resposta mesmo
+  /// quando quem lancou foi o robo.
+  createdByUserId    String              @db.Uuid
   name               String              @db.VarChar(120)
   /// Template do lancamento: accountId, categoryId, type, amountInCents,
   /// description, notes. Validado por schema Zod antes de gravar.
@@ -673,6 +679,7 @@ model Recurrence {
   updatedAt          DateTime            @updatedAt
 
   workspace    Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdBy    User             @relation("RecurrenceCreatedBy", fields: [createdByUserId], references: [id], onDelete: Restrict)
   transactions Transaction[]
   skips        RecurrenceSkip[]
 
@@ -1082,12 +1089,17 @@ model Notification {
   body        String
   /// Payload para o deep link (ex.: { budgetId, month }).
   data        Json?
+  /// Identidade do EVENTO que gerou o aviso, nao da execucao do job. O job
+  /// diario pode rodar de novo depois de uma falha; o indice unico abaixo e' o
+  /// que impede o mesmo lembrete de chegar duas vezes.
+  dedupeKey   String?          @db.VarChar(200)
   readAt      DateTime?
   createdAt   DateTime         @default(now())
 
   user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   workspace Workspace? @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 
+  @@unique([userId, dedupeKey])
   @@index([userId, readAt, createdAt])
   @@map("notifications")
 }

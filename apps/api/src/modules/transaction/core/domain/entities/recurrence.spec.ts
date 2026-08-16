@@ -28,6 +28,7 @@ const recurrence = (overrides: { startDate?: string; reminderDaysBefore?: number
 
   return Recurrence.create({
     workspaceId,
+    createdByUserId: new UniqueEntityId(),
     name: 'Aluguel',
     template: {
       accountId: new UniqueEntityId(),
@@ -48,13 +49,46 @@ describe('Recurrence', () => {
       const aluguel = recurrence();
       const pendentes = aluguel.pendingOccurrences(day('2026-03-01'));
 
-      // Janela de 60 dias a partir de 01/03 vai ate 30/04.
+      // Janela de 60 dias a partir de 01/03 vai ate 30/04. Janeiro e fevereiro
+      // ficam de fora: serie nova nao volta no tempo.
       expect(pendentes.map((occurrence) => occurrence.toString())).toEqual([
-        '2026-01-10',
-        '2026-02-10',
         '2026-03-10',
         '2026-04-10',
       ]);
+    });
+
+    it('NAO cria ocorrencia vencida ao cadastrar serie retroativa', () => {
+      /*
+       * Cadastrar hoje um aluguel "desde janeiro" nao pode despejar duas contas
+       * vencidas no extrato -- elas ja foram pagas, e como nascem PENDING
+       * estragariam tambem o saldo projetado.
+       */
+      const aluguel = recurrence({ startDate: '2025-06-10' });
+      const pendentes = aluguel.pendingOccurrences(day('2026-03-01'));
+
+      expect(pendentes.every((occurrence) => occurrence.isSameOrAfter(day('2026-03-01')))).toBe(true);
+      expect(pendentes).toHaveLength(2);
+    });
+
+    it('recupera o atraso quando o job ficou fora do ar', () => {
+      /*
+       * O outro lado da mesma regra: com `materializedUntil` preenchido, a
+       * serie retoma de onde parou. Uma semana de job parado nao pode fazer a
+       * ocorrencia daquela semana desaparecer.
+       */
+      const aluguel = recurrence();
+      aluguel.markMaterializedUntil(day('2026-03-05'));
+
+      const pendentes = aluguel.pendingOccurrences(day('2026-03-12'));
+
+      expect(pendentes.map((occurrence) => occurrence.toString())).toContain('2026-03-10');
+    });
+
+    it('serie que so comeca no futuro respeita a data de inicio', () => {
+      const aluguel = recurrence({ startDate: '2026-04-10' });
+      const pendentes = aluguel.pendingOccurrences(day('2026-03-01'));
+
+      expect(pendentes.map((occurrence) => occurrence.toString())).toEqual(['2026-04-10']);
     });
 
     it('nao regenera o que ja foi materializado', () => {
@@ -74,11 +108,7 @@ describe('Recurrence', () => {
       const aluguel = recurrence();
       const pendentes = aluguel.pendingOccurrences(day('2026-03-01'), [day('2026-03-10')]);
 
-      expect(pendentes.map((occurrence) => occurrence.toString())).toEqual([
-        '2026-01-10',
-        '2026-02-10',
-        '2026-04-10',
-      ]);
+      expect(pendentes.map((occurrence) => occurrence.toString())).toEqual(['2026-04-10']);
     });
 
     it('serie inativa nao gera nada', () => {

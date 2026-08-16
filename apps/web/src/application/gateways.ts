@@ -9,7 +9,15 @@ import {
   type CreateCategoryBody,
   type CreateTransactionBody,
   type CreateTransferBody,
+  type CreateRecurrenceBody,
+  type ListNotificationsQuery,
   type ListTransactionsQuery,
+  type NotificationList,
+  type Recurrence,
+  type RecurrenceList,
+  type RecurrenceOccurrence,
+  type SkipOccurrenceBody,
+  type UpdateRecurrenceBody,
   type ReorderCategoriesBody,
   type Transaction,
   type TransactionList,
@@ -115,4 +123,24 @@ export interface AttachmentGateway {
     attachmentId: string,
   ): Promise<AttachmentDownload>;
   remove(workspaceId: string, transactionId: string, attachmentId: string): Promise<void>;
+}
+
+export interface RecurrenceGateway {
+  list(workspaceId: string, includeInactive?: boolean): Promise<RecurrenceList>;
+  create(workspaceId: string, body: CreateRecurrenceBody): Promise<Recurrence>;
+  update(workspaceId: string, id: string, body: UpdateRecurrenceBody): Promise<Recurrence>;
+  remove(workspaceId: string, id: string): Promise<void>;
+  occurrences(workspaceId: string, id: string): Promise<RecurrenceOccurrence[]>;
+  skip(workspaceId: string, id: string, body: SkipOccurrenceBody): Promise<void>;
+}
+
+/**
+ * Avisos.
+ *
+ * Sem `workspaceId` em nenhuma assinatura: a caixa e' do usuario e atravessa os
+ * workspaces dele.
+ */
+export interface NotificationGateway {
+  list(query?: Partial<ListNotificationsQuery>): Promise<NotificationList>;
+  markRead(ids?: string[]): Promise<{ updated: number; unreadCount: number }>;
 }

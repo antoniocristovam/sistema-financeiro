@@ -69,6 +69,15 @@ export interface TransactionRepository {
   ): Promise<TransactionPage>;
 
   create(transaction: Transaction): Promise<void>;
+  /**
+   * Cria, ou nao faz nada se a ocorrencia ja existe.
+   *
+   * Devolve `true` so quando gravou. E' o que torna a materializacao das contas
+   * fixas idempotente: a decisao fica com o indice unico
+   * `(recurrenceId, occurrenceDate)`, e nao com um "select antes de inserir"
+   * que duas execucoes simultaneas atravessariam juntas.
+   */
+  createIfAbsent(transaction: Transaction): Promise<boolean>;
   /** As duas pernas de uma transferencia, na mesma transacao de banco. */
   createMany(transactions: Transaction[]): Promise<void>;
   save(transaction: Transaction): Promise<void>;
