@@ -11,9 +11,26 @@ import {
   UpdateAccountUseCase,
 } from '../../account/core/application/use-cases/manage-accounts';
 import {
+  CreateInstallmentPurchaseUseCase,
+  GetInvoiceUseCase,
+  ListCreditCardsUseCase,
+  ListInvoicesUseCase,
+  PayInvoiceUseCase,
+} from '../../account/core/application/use-cases/manage-invoices';
+import {
   ACCOUNT_REPOSITORY,
   type AccountRepository,
 } from '../../account/core/domain/repositories/account-repository';
+import {
+  INVOICE_REPOSITORY,
+  type InvoiceRepository,
+} from '../../account/core/domain/repositories/invoice-repository';
+import { BillingCycleInvoiceRouter } from '../../account/infra/invoice-router';
+import { PrismaInvoiceRepository } from '../../account/infra/prisma/prisma-invoice-repository';
+import {
+  INVOICE_ROUTER,
+  type InvoiceRouter,
+} from '../../transaction/core/application/ports/invoice-router';
 import { PrismaAccountRepository } from '../../account/infra/prisma/prisma-account-repository';
 import {
   ArchiveCategoryUseCase,
@@ -65,6 +82,7 @@ import {
 } from '../../workspace/core/domain/repositories/workspace-repository';
 import { PrismaWorkspaceRepository } from '../../workspace/infra/prisma/repositories/prisma-workspace-repository';
 import { AccountsController } from './http/accounts.controller';
+import { CardsController } from './http/cards.controller';
 import { CategoriesController } from './http/categories.controller';
 import { RecurrencesController } from './http/recurrences.controller';
 import { TransactionsController } from './http/transactions.controller';
@@ -86,12 +104,15 @@ import { TransactionsController } from './http/transactions.controller';
     CategoriesController,
     TransactionsController,
     RecurrencesController,
+    CardsController,
   ],
   providers: [
     { provide: ACCOUNT_REPOSITORY, useClass: PrismaAccountRepository },
     { provide: CATEGORY_REPOSITORY, useClass: PrismaCategoryRepository },
     { provide: TRANSACTION_REPOSITORY, useClass: PrismaTransactionRepository },
     { provide: RECURRENCE_REPOSITORY, useClass: PrismaRecurrenceRepository },
+    { provide: INVOICE_REPOSITORY, useClass: PrismaInvoiceRepository },
+    { provide: INVOICE_ROUTER, useClass: BillingCycleInvoiceRouter },
     { provide: WORKSPACE_REPOSITORY, useClass: PrismaWorkspaceRepository },
 
     {
@@ -226,13 +247,16 @@ import { TransactionsController } from './http/transactions.controller';
         accounts: AccountRepository,
         categories: CategoryRepository,
         clock: Clock,
-      ) => new CreateTransactionUseCase(access, transactions, accounts, categories, clock),
+        invoices: InvoiceRouter,
+      ) =>
+        new CreateTransactionUseCase(access, transactions, accounts, categories, clock, invoices),
       inject: [
         WorkspaceAccessService,
         TRANSACTION_REPOSITORY,
         ACCOUNT_REPOSITORY,
         CATEGORY_REPOSITORY,
         CLOCK,
+        INVOICE_ROUTER,
       ],
     },
     {
@@ -252,8 +276,16 @@ import { TransactionsController } from './http/transactions.controller';
         transactions: TransactionRepository,
         categories: CategoryRepository,
         unitOfWork: UnitOfWork,
-      ) => new UpdateTransactionUseCase(access, transactions, categories, unitOfWork),
-      inject: [WorkspaceAccessService, TRANSACTION_REPOSITORY, CATEGORY_REPOSITORY, UNIT_OF_WORK],
+        invoices: InvoiceRouter,
+      ) =>
+        new UpdateTransactionUseCase(access, transactions, categories, unitOfWork, invoices),
+      inject: [
+        WorkspaceAccessService,
+        TRANSACTION_REPOSITORY,
+        CATEGORY_REPOSITORY,
+        UNIT_OF_WORK,
+        INVOICE_ROUTER,
+      ],
     },
     {
       provide: DeleteTransactionUseCase,
@@ -263,13 +295,23 @@ import { TransactionsController } from './http/transactions.controller';
         audit: AuditLogger,
         unitOfWork: UnitOfWork,
         attachments: AttachmentCleaner,
-      ) => new DeleteTransactionUseCase(access, transactions, audit, unitOfWork, attachments),
+        invoices: InvoiceRouter,
+      ) =>
+        new DeleteTransactionUseCase(
+          access,
+          transactions,
+          audit,
+          unitOfWork,
+          attachments,
+          invoices,
+        ),
       inject: [
         WorkspaceAccessService,
         TRANSACTION_REPOSITORY,
         AUDIT_LOGGER,
         UNIT_OF_WORK,
         ATTACHMENT_CLEANER,
+        INVOICE_ROUTER,
       ],
     },
 
@@ -335,6 +377,71 @@ import { TransactionsController } from './http/transactions.controller';
       ) => new ListRecurrenceOccurrencesUseCase(access, recurrences, clock),
       inject: [WorkspaceAccessService, RECURRENCE_REPOSITORY, CLOCK],
     },
+    // -- Cartoes e faturas ----------------------------------------------------
+    {
+      provide: ListCreditCardsUseCase,
+      useFactory: (
+        access: WorkspaceAccessService,
+        accounts: AccountRepository,
+        invoices: InvoiceRepository,
+        clock: Clock,
+      ) => new ListCreditCardsUseCase(access, accounts, invoices, clock),
+      inject: [WorkspaceAccessService, ACCOUNT_REPOSITORY, INVOICE_REPOSITORY, CLOCK],
+    },
+    {
+      provide: ListInvoicesUseCase,
+      useFactory: (
+        access: WorkspaceAccessService,
+        accounts: AccountRepository,
+        invoices: InvoiceRepository,
+        clock: Clock,
+      ) => new ListInvoicesUseCase(access, accounts, invoices, clock),
+      inject: [WorkspaceAccessService, ACCOUNT_REPOSITORY, INVOICE_REPOSITORY, CLOCK],
+    },
+    {
+      provide: GetInvoiceUseCase,
+      useFactory: (access: WorkspaceAccessService, invoices: InvoiceRepository) =>
+        new GetInvoiceUseCase(access, invoices),
+      inject: [WorkspaceAccessService, INVOICE_REPOSITORY],
+    },
+    {
+      provide: PayInvoiceUseCase,
+      useFactory: (
+        access: WorkspaceAccessService,
+        accounts: AccountRepository,
+        invoices: InvoiceRepository,
+        transactions: TransactionRepository,
+        unitOfWork: UnitOfWork,
+        clock: Clock,
+      ) => new PayInvoiceUseCase(access, accounts, invoices, transactions, unitOfWork, clock),
+      inject: [
+        WorkspaceAccessService,
+        ACCOUNT_REPOSITORY,
+        INVOICE_REPOSITORY,
+        TRANSACTION_REPOSITORY,
+        UNIT_OF_WORK,
+        CLOCK,
+      ],
+    },
+    {
+      provide: CreateInstallmentPurchaseUseCase,
+      useFactory: (
+        access: WorkspaceAccessService,
+        accounts: AccountRepository,
+        invoices: InvoiceRepository,
+        transactions: TransactionRepository,
+        unitOfWork: UnitOfWork,
+      ) =>
+        new CreateInstallmentPurchaseUseCase(access, accounts, invoices, transactions, unitOfWork),
+      inject: [
+        WorkspaceAccessService,
+        ACCOUNT_REPOSITORY,
+        INVOICE_REPOSITORY,
+        TRANSACTION_REPOSITORY,
+        UNIT_OF_WORK,
+      ],
+    },
+
     {
       provide: SkipOccurrenceUseCase,
       useFactory: (access: WorkspaceAccessService, recurrences: RecurrenceRepository) =>

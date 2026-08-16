@@ -9,7 +9,13 @@ import {
   type CreateCategoryBody,
   type CreateTransactionBody,
   type CreateTransferBody,
+  type CreateInstallmentPurchaseBody,
   type CreateRecurrenceBody,
+  type CreditCardList,
+  type InstallmentPurchaseResult,
+  type Invoice,
+  type InvoiceWithItems,
+  type PayInvoiceBody,
   type ListNotificationsQuery,
   type ListTransactionsQuery,
   type NotificationList,
@@ -143,4 +149,26 @@ export interface RecurrenceGateway {
 export interface NotificationGateway {
   list(query?: Partial<ListNotificationsQuery>): Promise<NotificationList>;
   markRead(ids?: string[]): Promise<{ updated: number; unreadCount: number }>;
+}
+
+/**
+ * Cartoes e faturas.
+ *
+ * Nao ha metodo para "comprar no cartao": a compra e' um lancamento comum, e
+ * quem decide a fatura e' o servidor (regra 5). So o parcelamento tem forma
+ * propria, porque cria N lancamentos em N faturas de uma vez.
+ */
+export interface CardGateway {
+  list(workspaceId: string): Promise<CreditCardList>;
+  invoices(workspaceId: string, cardId: string, months?: number): Promise<Invoice[]>;
+  invoice(workspaceId: string, invoiceId: string): Promise<InvoiceWithItems>;
+  pay(
+    workspaceId: string,
+    invoiceId: string,
+    body: PayInvoiceBody,
+  ): Promise<{ transactionId: string }>;
+  installments(
+    workspaceId: string,
+    body: CreateInstallmentPurchaseBody,
+  ): Promise<InstallmentPurchaseResult>;
 }

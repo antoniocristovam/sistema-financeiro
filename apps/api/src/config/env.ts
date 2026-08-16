@@ -50,6 +50,9 @@ export const envSchema = z.object({
   /** Materializacao de madrugada; o lembrete logo depois, ja com o que ela criou. */
   RECURRENCE_CRON: z.string().default('0 3 * * *'),
   REMINDER_CRON: z.string().default('30 7 * * *'),
+  /** Fatura fecha de madrugada, antes de o dia comecar a gerar compras novas. */
+  INVOICE_CLOSING_CRON: z.string().default('15 2 * * *'),
+  INVOICE_REMINDER_CRON: z.string().default('0 8 * * *'),
   /*
    * Desliga o worker no processo atual.
    *

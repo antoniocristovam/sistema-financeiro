@@ -18,6 +18,7 @@ import { CalendarDate } from '../../../../../shared/domain/value-objects/calenda
 import { type Either, left, right } from '../../../../../shared/either';
 import { type AccountRepository } from '../../../../account/core/domain/repositories/account-repository';
 import { type AttachmentCleaner } from '../ports/attachment-cleaner';
+import { type InvoiceRouter } from '../ports/invoice-router';
 import { type CategoryRepository } from '../../../../category/core/domain/repositories/category-repository';
 import {
   type AccessError,
@@ -188,6 +189,7 @@ export class CreateTransactionUseCase {
     private readonly accounts: AccountRepository,
     private readonly categories: CategoryRepository,
     private readonly clock: Clock,
+    private readonly invoices: InvoiceRouter,
   ) {}
 
   async execute(
@@ -245,7 +247,29 @@ export class CreateTransactionUseCase {
       return left(transaction.value);
     }
 
+    /*
+     * Regra 5: compra no cartao nao debita a conta na data da compra.
+     *
+     * O roteador devolve a fatura do ciclo -- e `null` quando a conta nao e'
+     * cartao, que e' o caminho de toda despesa comum. Sem esta ligacao, a
+     * compra apareceria como saida imediata e o usuario veria o dinheiro
+     * deixar a conta corrente semanas antes de ele realmente sair.
+     */
+    const invoiceId = await this.invoices.routeFor(
+      input.workspaceId,
+      input.accountId,
+      date.value,
+    );
+
+    if (invoiceId) {
+      transaction.value.attachToInvoice(invoiceId);
+    }
+
     await this.transactions.create(transaction.value);
+
+    if (invoiceId) {
+      await this.invoices.refresh(input.workspaceId, invoiceId);
+    }
 
     const view = await this.transactions.findViewById(input.workspaceId, transaction.value.id);
 
@@ -363,6 +387,7 @@ export class UpdateTransactionUseCase {
     private readonly transactions: TransactionRepository,
     private readonly categories: CategoryRepository,
     private readonly unitOfWork: UnitOfWork,
+    private readonly invoices: InvoiceRouter,
   ) {}
 
   async execute(
@@ -487,6 +512,12 @@ export class UpdateTransactionUseCase {
       }
     });
 
+    // Mudar o valor de uma compra de cartao muda a fatura. O total e'
+    // recalculado a partir dos itens, nunca ajustado pela diferenca.
+    if (transaction.invoiceId) {
+      await this.invoices.refresh(input.workspaceId, transaction.invoiceId);
+    }
+
     const view = await this.transactions.findViewById(input.workspaceId, transaction.id);
 
     return right(view!);
@@ -521,6 +552,7 @@ export class DeleteTransactionUseCase {
     private readonly audit: AuditLogger,
     private readonly unitOfWork: UnitOfWork,
     private readonly attachments: AttachmentCleaner,
+    private readonly invoices: InvoiceRouter,
   ) {}
 
   async execute(input: DeleteTransactionInput): Promise<Either<TransactionError, void>> {
@@ -580,6 +612,18 @@ export class DeleteTransactionUseCase {
 
       await this.transactions.delete(input.workspaceId, input.transactionId);
     });
+
+    /*
+     * Excluir uma compra encolhe a fatura.
+     *
+     * Fora da transacao de banco de proposito: a linha ja sumiu, e o total e'
+     * derivado dos itens restantes. Se este recalculo falhar, a proxima compra
+     * ou o fechamento corrigem -- o inverso (recalcular dentro e falhar depois)
+     * deixaria a fatura contando um item que nao existe mais.
+     */
+    if (transaction.invoiceId) {
+      await this.invoices.refresh(input.workspaceId, transaction.invoiceId);
+    }
 
     await this.audit.record({
       workspaceId: input.workspaceId.toValue(),

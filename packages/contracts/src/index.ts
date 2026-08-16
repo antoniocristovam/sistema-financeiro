@@ -22,6 +22,7 @@ export * from './account.js';
 export * from './category.js';
 export * from './transaction.js';
 export * from './attachment.js';
+export * from './invoice.js';
 export * from './recurrence.js';
 export * from './notification.js';
 export * from './split.js';

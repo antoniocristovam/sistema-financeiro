@@ -36,11 +36,11 @@ const NAV: NavItem[] = [
   { to: '/contas', label: 'nav.accounts', icon: Wallet },
   { to: '/categorias', label: 'nav.categories', icon: Tags },
   { to: '/recorrencias', label: 'nav.recurrences', icon: CalendarClock },
+  { to: '/cartoes', label: 'nav.cards', icon: CreditCard },
 ];
 
 /** Ainda nao existem: aparecem desabilitados para dar o mapa do produto. */
 const UPCOMING: NavItem[] = [
-  { to: '/cartoes', label: 'nav.cards', icon: CreditCard },
   { to: '/divisoes', label: 'nav.splits', icon: ArrowLeftRight },
 ];
 

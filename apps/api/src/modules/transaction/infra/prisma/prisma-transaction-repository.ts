@@ -4,6 +4,7 @@ import { type Prisma } from '@prisma/client';
 
 import { PrismaTransactionManager } from '../../../../shared/database/prisma-transaction-manager';
 import { type UniqueEntityId } from '../../../../shared/domain/unique-entity-id';
+import { type CalendarDate } from '../../../../shared/domain/value-objects/calendar-date';
 import { type Transaction } from '../../core/domain/entities/transaction';
 import {
   type AccountBalance,
@@ -223,6 +224,33 @@ export class PrismaTransactionRepository implements TransactionRepository {
   async createMany(transactions: Transaction[]): Promise<void> {
     await this.tx.client.transaction.createMany({
       data: transactions.map(TransactionMapper.toPrisma),
+    });
+  }
+
+  async createInstallmentGroup(
+    group: {
+      id: UniqueEntityId;
+      workspaceId: UniqueEntityId;
+      description: string;
+      totalAmountInCents: number;
+      totalInstallments: number;
+      firstDueDate: CalendarDate;
+    },
+    installments: Transaction[],
+  ): Promise<void> {
+    await this.tx.client.installmentGroup.create({
+      data: {
+        id: group.id.toValue(),
+        workspaceId: group.workspaceId.toValue(),
+        description: group.description,
+        totalAmountInCents: group.totalAmountInCents,
+        totalInstallments: group.totalInstallments,
+        firstDueDate: group.firstDueDate.toUtcDate(),
+      },
+    });
+
+    await this.tx.client.transaction.createMany({
+      data: installments.map(TransactionMapper.toPrisma),
     });
   }
 

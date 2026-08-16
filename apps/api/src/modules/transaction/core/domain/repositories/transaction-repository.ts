@@ -80,6 +80,25 @@ export interface TransactionRepository {
   createIfAbsent(transaction: Transaction): Promise<boolean>;
   /** As duas pernas de uma transferencia, na mesma transacao de banco. */
   createMany(transactions: Transaction[]): Promise<void>;
+
+  /**
+   * O grupo de parcelamento e suas parcelas, tudo ou nada.
+   *
+   * Uma so operacao porque as parcelas nao existem sem o grupo: gravar as doze
+   * e falhar no grupo deixaria doze lancamentos soltos que a tela nao consegue
+   * reconhecer como uma compra unica.
+   */
+  createInstallmentGroup(
+    group: {
+      id: UniqueEntityId;
+      workspaceId: UniqueEntityId;
+      description: string;
+      totalAmountInCents: number;
+      totalInstallments: number;
+      firstDueDate: CalendarDate;
+    },
+    installments: Transaction[],
+  ): Promise<void>;
   save(transaction: Transaction): Promise<void>;
   delete(workspaceId: UniqueEntityId, id: UniqueEntityId): Promise<void>;
   /** Apaga o PAR inteiro: meia transferencia deixaria o saldo errado. */
