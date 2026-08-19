@@ -84,7 +84,7 @@ describe('ExpenseSplit', () => {
       });
 
       expect(carla.participantUserId).toBeNull();
-      expect(carla.participantKey()).toBe('carla@exemplo.com');
+      expect(carla.participantKey()).toBe('email:carla@exemplo.com');
     });
 
     it('aceita so o nome quando nem e-mail existe', () => {
@@ -94,7 +94,7 @@ describe('ExpenseSplit', () => {
         participantName: 'Amigo do Trabalho',
       });
 
-      expect(amigo.participantKey()).toBe('amigo do trabalho');
+      expect(amigo.participantKey()).toBe('name:amigo do trabalho');
     });
 
     it('vincula ao usuario quando a pessoa aceita o convite', () => {
@@ -105,7 +105,7 @@ describe('ExpenseSplit', () => {
 
       expect(carla.participantUserId?.toValue()).toBe(userId.toValue());
       // A partir daqui a identidade passa a ser o usuario.
-      expect(carla.participantKey()).toBe(userId.toValue());
+      expect(carla.participantKey()).toBe(`user:${userId.toValue()}`);
     });
   });
 
@@ -113,8 +113,8 @@ describe('ExpenseSplit', () => {
     it('prefere o usuario ao e-mail e o e-mail ao nome', () => {
       const userId = new UniqueEntityId();
 
-      expect(split({ participantUserId: userId }).participantKey()).toBe(userId.toValue());
-      expect(split({ participantUserId: null }).participantKey()).toBe('bruno@finapp.local');
+      expect(split({ participantUserId: userId }).participantKey()).toBe(`user:${userId.toValue()}`);
+      expect(split({ participantUserId: null }).participantKey()).toBe('email:bruno@finapp.local');
     });
   });
 });

@@ -109,9 +109,28 @@ import {
 import { PrismaGoalRepository } from '../../goal/infra/prisma/prisma-goal-repository';
 import { NOTIFIER, type Notifier } from '../../../shared/application/ports/notifier';
 import { NotificationModule } from '../../notification/infra/notification.module';
+import {
+  GetTransactionSplitsUseCase,
+  ListSettlementsUseCase,
+  ListSplitBalancesUseCase,
+  RecordSettlementUseCase,
+  RemoveSplitUseCase,
+  SplitTransactionUseCase,
+} from '../../split/core/application/use-cases/manage-splits';
+import {
+  SPLIT_REPOSITORY,
+  type SplitRepository,
+} from '../../split/core/domain/repositories/split-repository';
+import { PrismaSplitRepository } from '../../split/infra/prisma/prisma-split-repository';
+import {
+  USER_REPOSITORY,
+  type UserRepository,
+} from '../../identity/core/domain/repositories/user-repository';
+import { PrismaUserRepository } from '../../identity/infra/prisma/repositories/prisma-user-repository';
 import { AccountsController } from './http/accounts.controller';
 import { CardsController } from './http/cards.controller';
 import { PlanningController } from './http/planning.controller';
+import { SplitsController } from './http/splits.controller';
 import { CategoriesController } from './http/categories.controller';
 import { RecurrencesController } from './http/recurrences.controller';
 import { TransactionsController } from './http/transactions.controller';
@@ -135,6 +154,7 @@ import { TransactionsController } from './http/transactions.controller';
     RecurrencesController,
     CardsController,
     PlanningController,
+    SplitsController,
   ],
   providers: [
     { provide: ACCOUNT_REPOSITORY, useClass: PrismaAccountRepository },
@@ -145,6 +165,8 @@ import { TransactionsController } from './http/transactions.controller';
     { provide: INVOICE_ROUTER, useClass: BillingCycleInvoiceRouter },
     { provide: BUDGET_REPOSITORY, useClass: PrismaBudgetRepository },
     { provide: GOAL_REPOSITORY, useClass: PrismaGoalRepository },
+    { provide: SPLIT_REPOSITORY, useClass: PrismaSplitRepository },
+    { provide: USER_REPOSITORY, useClass: PrismaUserRepository },
     { provide: WORKSPACE_REPOSITORY, useClass: PrismaWorkspaceRepository },
 
     {
@@ -585,6 +607,75 @@ import { TransactionsController } from './http/transactions.controller';
         unitOfWork: UnitOfWork,
       ) => new RemoveContributionUseCase(access, goals, transactions, unitOfWork),
       inject: [WorkspaceAccessService, GOAL_REPOSITORY, TRANSACTION_REPOSITORY, UNIT_OF_WORK],
+    },
+
+    // -- Divisao de despesas --------------------------------------------------
+    {
+      provide: SplitTransactionUseCase,
+      useFactory: (
+        access: WorkspaceAccessService,
+        transactions: TransactionRepository,
+        splits: SplitRepository,
+        unitOfWork: UnitOfWork,
+      ) => new SplitTransactionUseCase(access, transactions, splits, unitOfWork),
+      inject: [WorkspaceAccessService, TRANSACTION_REPOSITORY, SPLIT_REPOSITORY, UNIT_OF_WORK],
+    },
+    {
+      provide: GetTransactionSplitsUseCase,
+      useFactory: (
+        access: WorkspaceAccessService,
+        transactions: TransactionRepository,
+        splits: SplitRepository,
+      ) => new GetTransactionSplitsUseCase(access, transactions, splits),
+      inject: [WorkspaceAccessService, TRANSACTION_REPOSITORY, SPLIT_REPOSITORY],
+    },
+    {
+      provide: RemoveSplitUseCase,
+      useFactory: (access: WorkspaceAccessService, splits: SplitRepository) =>
+        new RemoveSplitUseCase(access, splits),
+      inject: [WorkspaceAccessService, SPLIT_REPOSITORY],
+    },
+    {
+      provide: ListSplitBalancesUseCase,
+      useFactory: (access: WorkspaceAccessService, splits: SplitRepository) =>
+        new ListSplitBalancesUseCase(access, splits),
+      inject: [WorkspaceAccessService, SPLIT_REPOSITORY],
+    },
+    {
+      provide: RecordSettlementUseCase,
+      useFactory: (
+        access: WorkspaceAccessService,
+        splits: SplitRepository,
+        accounts: AccountRepository,
+        transactions: TransactionRepository,
+        users: UserRepository,
+        unitOfWork: UnitOfWork,
+        clock: Clock,
+      ) =>
+        new RecordSettlementUseCase(
+          access,
+          splits,
+          accounts,
+          transactions,
+          users,
+          unitOfWork,
+          clock,
+        ),
+      inject: [
+        WorkspaceAccessService,
+        SPLIT_REPOSITORY,
+        ACCOUNT_REPOSITORY,
+        TRANSACTION_REPOSITORY,
+        USER_REPOSITORY,
+        UNIT_OF_WORK,
+        CLOCK,
+      ],
+    },
+    {
+      provide: ListSettlementsUseCase,
+      useFactory: (access: WorkspaceAccessService, splits: SplitRepository) =>
+        new ListSettlementsUseCase(access, splits),
+      inject: [WorkspaceAccessService, SPLIT_REPOSITORY],
     },
 
     {

@@ -9,6 +9,7 @@ import {
   type CategoryGateway,
   type GoalGateway,
   type NotificationGateway,
+  type SplitGateway,
   type OnboardingGateway,
   type RecurrenceGateway,
   type TransactionGateway,
@@ -26,6 +27,7 @@ import {
 } from '../../infra/gateways/ledger-gateways';
 import { HttpAttachmentGateway } from '../../infra/gateways/attachment-gateway';
 import { HttpCardGateway } from '../../infra/gateways/card-gateway';
+import { HttpSplitGateway } from '../../infra/gateways/split-gateway';
 import {
   HttpBudgetGateway,
   HttpGoalGateway,
@@ -50,6 +52,7 @@ export interface Dependencies {
   cards: CardGateway;
   budgets: BudgetGateway;
   goals: GoalGateway;
+  splits: SplitGateway;
 }
 
 const DependenciesContext = createContext<Dependencies | null>(null);
@@ -89,6 +92,7 @@ export function DependenciesProvider({
       cards: new HttpCardGateway(http),
       budgets: new HttpBudgetGateway(http),
       goals: new HttpGoalGateway(http),
+      splits: new HttpSplitGateway(http),
     };
   }, [value]);
 

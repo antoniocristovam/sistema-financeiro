@@ -10,6 +10,7 @@ import { useMutation } from '@tanstack/react-query';
 import { useState } from 'react';
 
 import { AttachmentsPanel } from '../../components/attachments-panel';
+import { SplitPanel } from '../../components/split-panel';
 import { MoneyInput } from '../../components/money-input';
 import { useDependencies } from '../../providers/dependencies';
 import { useTranslation } from '../../providers/locale-provider';
@@ -285,7 +286,16 @@ export function TransactionDialog({
           {/* Comprovante so depois de o lancamento existir: o upload precisa
               do id para montar a chave do objeto. */}
           {editing ? (
-            <div className="border-t border-border-subtle pt-4">
+            <div className="space-y-4 border-t border-border-subtle pt-4">
+              {/* So despesa se divide: transferencia nem despesa e' (regra 4). */}
+              {editing.type === TransactionType.EXPENSE && (
+                <SplitPanel
+                  transactionId={editing.id}
+                  amountInCents={editing.amountInCents}
+                  onChanged={onSaved}
+                />
+              )}
+
               <AttachmentsPanel transactionId={editing.id} />
             </div>
           ) : (

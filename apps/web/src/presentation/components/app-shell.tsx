@@ -41,10 +41,6 @@ const NAV: NavItem[] = [
   { to: '/cartoes', label: 'nav.cards', icon: CreditCard },
   { to: '/orcamentos', label: 'nav.budgets', icon: PiggyBank },
   { to: '/metas', label: 'nav.goals', icon: Target },
-];
-
-/** Ainda nao existem: aparecem desabilitados para dar o mapa do produto. */
-const UPCOMING: NavItem[] = [
   { to: '/divisoes', label: 'nav.splits', icon: ArrowLeftRight },
 ];
 
@@ -158,24 +154,6 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
               <Icon className="h-4 w-4 shrink-0" aria-hidden />
               {t(item.label)}
             </Link>
-          );
-        })}
-      </div>
-
-      <div className="mt-4 space-y-0.5 border-t border-border-subtle pt-4">
-        {UPCOMING.map((item) => {
-          const Icon = item.icon;
-
-          return (
-            <span
-              key={item.to}
-              aria-disabled
-              title={t('nav.comingSoon')}
-              className="flex cursor-not-allowed items-center gap-3 rounded-lg px-3 py-2 text-sm text-content-subtle opacity-60"
-            >
-              <Icon className="h-4 w-4 shrink-0" aria-hidden />
-              {t(item.label)}
-            </span>
           );
         })}
       </div>

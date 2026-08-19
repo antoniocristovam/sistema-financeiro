@@ -381,13 +381,9 @@ model FinancialProfile {
   id                    String    @id @default(uuid()) @db.Uuid
   userId                String    @unique @db.Uuid
   monthlyIncomeInCents  Int       @default(0)
-  /// Dia do mes em que o salario cai (1-31).
   payday                Int?
-  /// Percentual alvo de economia mensal, em pontos-base (10% = 1000).
   savingsTargetPercent  Int?
-  /// Enquanto for nulo, toda navegacao redireciona para o wizard.
   onboardingCompletedAt DateTime?
-  /// Ultimo passo concluido (1-5). E' o que torna o wizard retomavel.
   onboardingStep        Int       @default(0)
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt
@@ -484,20 +480,20 @@ model Invoice {
 /// `workspaceId` nulo = categoria semente do sistema, visivel para todos e
 /// nao editavel. O usuario que quiser mudar ganha uma copia no workspace dele.
 model Category {
-  id          String           @id @default(uuid()) @db.Uuid
-  workspaceId String?          @db.Uuid
-  name        String           @db.VarChar(80)
-  type        CategoryType
-  icon        String?          @db.VarChar(64)
-  color       String?          @db.VarChar(32)
-  parentId    String?          @db.Uuid
+  id              String           @id @default(uuid()) @db.Uuid
+  workspaceId     String?          @db.Uuid
+  name            String           @db.VarChar(80)
+  type            CategoryType
+  icon            String?          @db.VarChar(64)
+  color           String?          @db.VarChar(32)
+  parentId        String?          @db.Uuid
   /// Ordem manual (drag-and-drop). Menor primeiro.
-  sortOrder   Int              @default(0)
+  sortOrder       Int              @default(0)
   /// So faz sentido em categoria INCOME. Classifica o rendimento para o
   /// relatorio anual: tributavel, isento ou de tributacao exclusiva.
-  taxNature   TaxIncomeNature?
+  taxNature       TaxIncomeNature?
   /// Identidade da SEMENTE do sistema. So categorias globais tem.
-  systemKey   String?          @unique @db.VarChar(64)
+  systemKey       String?          @unique @db.VarChar(64)
   /// Semente de ORIGEM de uma copia dentro do workspace.
   ///
   /// Campo separado de `systemKey` de proposito: sao duas afirmacoes
@@ -507,10 +503,10 @@ model Category {
   /// O unique composto com `workspaceId` e' o que impede copiar a mesma
   /// semente duas vezes para o mesmo workspace, mesmo com dois cliques em
   /// paralelo -- checagem no codigo sozinha tem janela de corrida.
-  sourceSystemKey String?      @db.VarChar(64)
-  archivedAt  DateTime?
-  createdAt   DateTime         @default(now())
-  updatedAt   DateTime         @updatedAt
+  sourceSystemKey String?          @db.VarChar(64)
+  archivedAt      DateTime?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
 
   workspace         Workspace?          @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   parent            Category?           @relation("CategoryTree", fields: [parentId], references: [id], onDelete: Restrict)
@@ -736,18 +732,12 @@ model Attachment {
 // ORCAMENTOS E METAS
 // =============================================================================
 
-/// Limite mensal por categoria.
-///
-/// O consumo considera a MINHA PARTE em despesas divididas, nunca o valor cheio
-/// (regra 6). Orcamento em categoria-mae agrega as filhas.
 model Budget {
   id             String   @id @default(uuid()) @db.Uuid
   workspaceId    String   @db.Uuid
   categoryId     String   @db.Uuid
-  /// Primeiro dia do mes.
   referenceMonth DateTime @db.Date
   limitInCents   Int
-  /// Sobra do mes anterior soma ao limite deste mes.
   rollover       Boolean  @default(false)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
@@ -763,13 +753,11 @@ model Budget {
 }
 
 /// Marca que um limiar ja foi notificado neste orcamento (que ja e' mensal).
-///
 /// E' o antidoto para os quinze e-mails: sem isso, cada transacao acima de 80%
 /// dispara um alerta novo.
 model BudgetAlert {
   id         String   @id @default(uuid()) @db.Uuid
   budgetId   String   @db.Uuid
-  /// Limiar em pontos percentuais: 80 ou 100.
   threshold  Int
   notifiedAt DateTime @default(now())
 
@@ -787,7 +775,6 @@ model Goal {
   deadline            DateTime? @db.Date
   icon                String?   @db.VarChar(64)
   color               String?   @db.VarChar(32)
-  /// Conta de reserva. Se preenchida, o aporte gera uma transferencia real.
   linkedAccountId     String?   @db.Uuid
   achievedAt          DateTime?
   archivedAt          DateTime?
@@ -810,7 +797,6 @@ model GoalContribution {
   date            DateTime @db.Date
   createdByUserId String   @db.Uuid
   note            String?  @db.VarChar(255)
-  /// Transferencia gerada quando a meta tem conta vinculada.
   transactionId   String?  @unique @db.Uuid
   createdAt       DateTime @default(now())
 
@@ -836,17 +822,12 @@ model ExpenseSplit {
   id                String      @id @default(uuid()) @db.Uuid
   workspaceId       String      @db.Uuid
   transactionId     String      @db.Uuid
-  /// Nulo quando a pessoa ainda nao tem conta na plataforma.
   participantUserId String?     @db.Uuid
   participantName   String      @db.VarChar(120)
   participantEmail  String?     @db.VarChar(255)
   shareType         ShareType
-  /// EQUAL: ignorado. PERCENT: pontos-base (33,33% = 3333). FIXED: centavos.
   shareValue        Int?
-  /// Valor efetivo desta pessoa, ja com os centavos de resto distribuidos.
   amountInCents     Int
-  /// Marca a linha que representa o dono do lancamento -- e' esta que entra em
-  /// relatorio e orcamento.
   isOwner           Boolean     @default(false)
   status            SplitStatus @default(PENDING)
   settledAt         DateTime?

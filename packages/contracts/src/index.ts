@@ -28,3 +28,4 @@ export * from './goal.js';
 export * from './recurrence.js';
 export * from './notification.js';
 export * from './split.js';
+export * from './settlement.js';

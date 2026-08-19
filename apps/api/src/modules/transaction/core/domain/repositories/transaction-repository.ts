@@ -31,6 +31,9 @@ export interface TransactionView {
   transferCounterpartAccount: { id: string; name: string } | null;
   installmentTotal: number | null;
   attachmentCount: number;
+  splitCount: number;
+  /** A parte do dono. Igual ao valor cheio quando nao ha divisao (regra 6). */
+  ownerShareInCents: number;
 }
 
 export interface TransactionPage {

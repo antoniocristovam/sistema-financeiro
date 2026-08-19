@@ -16,6 +16,11 @@ import {
   type CreateContributionBody,
   type CreateGoalBody,
   type CreateInstallmentPurchaseBody,
+  type CreateSettlementBody,
+  type SettlementList,
+  type SplitBalanceList,
+  type SplitPayload,
+  type TransactionSplits,
   type GoalList,
   type GoalWithContributions,
   type UpdateBudgetBody,
@@ -203,4 +208,20 @@ export interface GoalGateway {
     body: CreateContributionBody,
   ): Promise<{ achieved: boolean }>;
   removeContribution(workspaceId: string, id: string, contributionId: string): Promise<void>;
+}
+
+export interface SplitGateway {
+  get(workspaceId: string, transactionId: string): Promise<TransactionSplits>;
+  split(
+    workspaceId: string,
+    transactionId: string,
+    body: SplitPayload,
+  ): Promise<TransactionSplits>;
+  remove(workspaceId: string, transactionId: string): Promise<void>;
+  balances(workspaceId: string): Promise<SplitBalanceList>;
+  settlements(workspaceId: string): Promise<SettlementList>;
+  settle(
+    workspaceId: string,
+    body: CreateSettlementBody,
+  ): Promise<{ settlementId: string; settledSplits: number }>;
 }

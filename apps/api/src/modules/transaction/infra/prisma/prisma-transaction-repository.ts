@@ -32,7 +32,15 @@ const VIEW_INCLUDE = {
   workspace: { select: { baseCurrency: true } },
   // Contagem pela relacao: evita uma consulta por linha so para saber se ha
   // comprovante, e nao acopla o modulo de lancamentos ao de anexos.
-  _count: { select: { attachments: true } },
+  _count: { select: { attachments: true, splits: true } },
+  /*
+   * So a linha do DONO da divisao.
+   *
+   * E' ela que carrega a minha parte (regra 6); as outras nao interessam para
+   * o extrato. Trazer a divisao inteira aqui multiplicaria as linhas por
+   * participante para ganhar um numero so.
+   */
+  splits: { where: { isOwner: true }, select: { amountInCents: true } },
 } satisfies Prisma.TransactionInclude;
 
 type RawView = Prisma.TransactionGetPayload<{ include: typeof VIEW_INCLUDE }>;
@@ -440,6 +448,9 @@ export class PrismaTransactionRepository implements TransactionRepository {
         transferCounterpartAccount: other,
         installmentTotal: raw.installmentGroup?.totalInstallments ?? null,
         attachmentCount: raw._count.attachments,
+        splitCount: raw._count.splits,
+        // Sem divisao, o valor cheio ja e' a minha parte.
+        ownerShareInCents: raw.splits[0]?.amountInCents ?? raw.amountInCents,
       };
     });
   }

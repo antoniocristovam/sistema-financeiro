@@ -17,6 +17,7 @@ import { AccountsPage } from './accounts/accounts-page';
 import { BudgetsPage } from './budgets/budgets-page';
 import { CardsPage } from './cards/cards-page';
 import { GoalsPage } from './goals/goals-page';
+import { SplitsPage } from './splits/splits-page';
 import { CategoriesPage } from './categories/categories-page';
 import { DashboardPage } from './dashboard-placeholder';
 import { OnboardingPage } from './onboarding/onboarding-page';
@@ -32,18 +33,6 @@ const PUBLIC_PATHS = new Set([
   '/verificar-email',
 ]);
 
-/**
- * Guarda de navegacao.
- *
- * Tres decisoes, nesta ordem:
- *
- * 1. Enquanto a sessao esta sendo restaurada, nao decide NADA. Decidir antes
- *    mandaria para o login quem tem sessao valida -- e a tela piscaria a cada
- *    F5.
- * 2. Sem sessao em rota privada, vai para o login.
- * 3. Com sessao e onboarding incompleto, TUDO cai no wizard. E' a regra do
- *    documento: enquanto `onboardingCompletedAt` for nulo, nao ha app.
- */
 function RouteGuard() {
   const { status, user } = useSession();
   const { t } = useTranslation();
@@ -138,7 +127,6 @@ const onboardingRoute = createRoute({
   component: OnboardingPage,
 });
 
-/** Telas internas: todas dentro da casca com sidebar. */
 const withShell = (Component: () => React.JSX.Element) => () => (
   <AppShell>
     <Component />
@@ -193,22 +181,29 @@ const goalsRoute = createRoute({
   component: withShell(GoalsPage),
 });
 
+const splitsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/divisoes',
+  component: withShell(SplitsPage),
+});
+
 const routeTree = rootRoute.addChildren([
   indexRoute,
+  cardsRoute,
+  goalsRoute,
+  splitsRoute,
   signInRoute,
   signUpRoute,
-  forgotPasswordRoute,
-  resetPasswordRoute,
-  verifyEmailRoute,
-  onboardingRoute,
-  dashboardRoute,
-  transactionsRoute,
-  accountsRoute,
-  categoriesRoute,
-  recurrencesRoute,
-  cardsRoute,
   budgetsRoute,
-  goalsRoute,
+  accountsRoute,
+  dashboardRoute,
+  onboardingRoute,
+  categoriesRoute,
+  verifyEmailRoute,
+  recurrencesRoute,
+  transactionsRoute,
+  resetPasswordRoute,
+  forgotPasswordRoute,
 ]);
 
 export const router = createRouter({ routeTree });

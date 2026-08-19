@@ -139,6 +139,8 @@ export class TransactionPresenter {
       recurrenceId: transaction.recurrenceId?.toValue() ?? null,
       invoiceId: transaction.invoiceId?.toValue() ?? null,
       attachmentCount: view.attachmentCount,
+      splitCount: view.splitCount,
+      ownerShareInCents: view.ownerShareInCents,
 
       createdAt: transaction.createdAt.toISOString(),
     };

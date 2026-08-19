@@ -1,4 +1,4 @@
-import { type ShareType, SplitStatus } from '@finapp/contracts';
+import { participantKeyOf, type ShareType, SplitStatus } from '@finapp/contracts';
 import { Money } from '@finapp/money';
 
 import { Entity, type Optional } from '../../../../../shared/domain/entity';
@@ -134,12 +134,21 @@ export class ExpenseSplit extends Entity<ExpenseSplitProps> {
   }
 
   /** Identidade estavel para deduplicar participante. */
+  /**
+   * Chave estavel do participante, com PREFIXO da origem.
+   *
+   * O prefixo nao e' enfeite: sem ele, um usuario cujo id fosse igual ao nome
+   * normalizado de outra pessoa colidiria, e -- pior -- a chave gerada aqui
+   * precisa bater exatamente com a que o contrato monta para o cliente. Duas
+   * convencoes diferentes produziriam saldos que nunca se encontram: a tela
+   * mandaria `name:bruno` e o servidor procuraria por `bruno`.
+   */
   participantKey(): string {
-    return (
-      this.props.participantUserId?.toValue() ??
-      this.props.participantEmail?.value ??
-      this.props.participantName.trim().toLowerCase()
-    );
+    return participantKeyOf({
+      participantUserId: this.props.participantUserId?.toValue() ?? null,
+      email: this.props.participantEmail?.value ?? null,
+      name: this.props.participantName,
+    });
   }
 
   settle(settlementId: UniqueEntityId | null, now: Date = new Date()): void {

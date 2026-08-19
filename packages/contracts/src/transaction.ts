@@ -125,6 +125,16 @@ export const transactionSchema = z.object({
   invoiceId: zUuid.nullable(),
   /** Quantos comprovantes o lancamento tem. Alimenta o clipe na listagem. */
   attachmentCount: z.number().int().nonnegative(),
+  /** Quantas pessoas dividem esta despesa. Zero = nao esta dividida. */
+  splitCount: z.number().int().nonnegative(),
+  /**
+   * A MINHA parte (regra 6).
+   *
+   * Igual ao valor cheio quando nao ha divisao. Quando ha, e' este numero que
+   * entra em relatorio e orcamento -- o valor cheio continua sendo o que saiu
+   * da conta.
+   */
+  ownerShareInCents: z.number().int(),
 
   createdAt: zInstant,
 });
